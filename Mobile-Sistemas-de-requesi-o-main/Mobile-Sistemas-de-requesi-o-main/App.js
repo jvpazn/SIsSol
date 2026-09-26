@@ -2,7 +2,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -10,7 +9,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 
 function AppIcon() {
@@ -48,13 +47,13 @@ function LoginScreen({ onNavigate }) {
 
   const fazerLogin = async () => {
     if (!matricula || !senha) {
-      Alert.alert("Atenção", "Preencha a matrícula e a senha!");
-      return;
-    }
+  window.alert("Atenção\n\nPreencha a matrícula e a senha!");
+  return;
+}
 
     setCarregando(true);
     try {
-      const resposta = await fetch('http://10.31.35.28:8080/api/usuarios/login', {
+      const resposta = await fetch('http://10.31.37.12:8080/api/usuarios/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -68,11 +67,11 @@ function LoginScreen({ onNavigate }) {
       if (resposta.ok) {
         onNavigate("home");
       } else {
-        Alert.alert("Erro", "Matrícula ou senha incorretos!");
+        window.alert("Matrícula ou senha incorretos!");
       }
     } catch (erro) {
       console.error(erro);
-      Alert.alert("Erro", "Não foi possível conectar ao servidor.");
+      window.alert("Não foi possível conectar ao servidor.");
     } finally {
       setCarregando(false);
     }
