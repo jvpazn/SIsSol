@@ -129,29 +129,284 @@ function LoginScreen({ onNavigate }) {
 
 function CadastroScreen({ onNavigate }) {
   const [nome, setNome] = useState("");
-  const [email, setEmail] = useState("");
+  const [matricula, setMatricula] = useState("");
   const [senha, setSenha] = useState("");
+  const [turmaId, setTurmaId] = useState(1);
+  const [carregando, setCarregando] = useState(false);
+
+  const cadastrarUsuario = async () => {
+    if (!nome || !matricula || !senha) {
+      window.alert(
+        "Atenção\n\nPreencha nome, matrícula e senha!"
+      );
+      return;
+    }
+
+    setCarregando(true);
+
+    try {
+      const resposta = await fetch(
+        "http://10.31.37.12:8080/api/usuarios/criar",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            nome: nome,
+            matricula: matricula,
+            senha: senha,
+            turmaId: turmaId,
+          }),
+        }
+      );
+
+      const resultado = await resposta.text();
+
+      console.log("Resposta do servidor:", resultado);
+
+      if (resposta.ok) {
+        window.alert(
+          "Cadastro realizado com sucesso!"
+        );
+
+        setNome("");
+        setMatricula("");
+        setSenha("");
+
+        onNavigate("login");
+      } else {
+        window.alert(
+          "Não foi possível realizar o cadastro.\n\n" +
+          resultado
+        );
+      }
+
+    } catch (erro) {
+
+      console.error(
+        "Erro ao conectar com o backend:",
+        erro
+      );
+
+      window.alert(
+        "Não foi possível conectar ao servidor."
+      );
+
+    } finally {
+      setCarregando(false);
+    }
+  };
 
   return (
     <View style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        keyboardShouldPersistTaps="handled"
+      >
         <View style={styles.card}>
+
           <AppIcon />
-          <Text style={styles.title}>Cadastro</Text>
-          <Text style={styles.subtitle}>Crie sua conta para começar</Text>
 
-          <Campo label="Nome" value={nome} onChangeText={setNome} placeholder="Digite seu nome completo" icon="person-outline" />
-          <Campo label="E-mail" value={email} onChangeText={setEmail} placeholder="Digite seu e-mail" icon="mail-outline" />
-          <Campo label="Senha" value={senha} onChangeText={setSenha} placeholder="Crie uma senha" secureTextEntry={true} icon="lock-closed-outline" />
+          <Text style={styles.title}>
+            Cadastro
+          </Text>
 
-          <TouchableOpacity style={styles.primaryButton} onPress={() => onNavigate("login")}>
-            <Text style={styles.primaryButtonText}>Cadastrar</Text>
+          <Text style={styles.subtitle}>
+            Crie sua conta para começar
+          </Text>
+
+          <Campo
+            label="Nome"
+            value={nome}
+            onChangeText={setNome}
+            placeholder="Digite seu nome completo"
+            icon="person-outline"
+          />
+
+          <Campo
+            label="Matrícula"
+            value={matricula}
+            onChangeText={setMatricula}
+            placeholder="Digite sua matrícula"
+            icon="card-outline"
+          />
+
+          <Campo
+            label="Senha"
+            value={senha}
+            onChangeText={setSenha}
+            placeholder="Crie uma senha"
+            secureTextEntry={true}
+            icon="lock-closed-outline"
+          />
+
+          <Text style={styles.label}>
+            Turma
+          </Text>
+
+          <View style={{ marginBottom: 14 }}>
+
+            <TouchableOpacity
+              style={[
+                styles.primaryButton,
+                {
+                  backgroundColor:
+                    turmaId === 1
+                      ? "#3F6FE5"
+                      : "#E8ECF4"
+                }
+              ]}
+              onPress={() => setTurmaId(1)}
+            >
+              <Text
+                style={{
+                  color:
+                    turmaId === 1
+                      ? "#FFFFFF"
+                      : "#40454D",
+                  fontSize: 13,
+                  fontWeight: "600"
+                }}
+              >
+                1º Ano A
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.primaryButton,
+                {
+                  marginTop: 8,
+                  backgroundColor:
+                    turmaId === 2
+                      ? "#3F6FE5"
+                      : "#E8ECF4"
+                }
+              ]}
+              onPress={() => setTurmaId(2)}
+            >
+              <Text
+                style={{
+                  color:
+                    turmaId === 2
+                      ? "#FFFFFF"
+                      : "#40454D",
+                  fontSize: 13,
+                  fontWeight: "600"
+                }}
+              >
+                1º Ano B
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.primaryButton,
+                {
+                  marginTop: 8,
+                  backgroundColor:
+                    turmaId === 3
+                      ? "#3F6FE5"
+                      : "#E8ECF4"
+                }
+              ]}
+              onPress={() => setTurmaId(3)}
+            >
+              <Text
+                style={{
+                  color:
+                    turmaId === 3
+                      ? "#FFFFFF"
+                      : "#40454D",
+                  fontSize: 13,
+                  fontWeight: "600"
+                }}
+              >
+                2º Ano A
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.primaryButton,
+                {
+                  marginTop: 8,
+                  backgroundColor:
+                    turmaId === 4
+                      ? "#3F6FE5"
+                      : "#E8ECF4"
+                }
+              ]}
+              onPress={() => setTurmaId(4)}
+            >
+              <Text
+                style={{
+                  color:
+                    turmaId === 4
+                      ? "#FFFFFF"
+                      : "#40454D",
+                  fontSize: 13,
+                  fontWeight: "600"
+                }}
+              >
+                2º Ano B
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.primaryButton,
+                {
+                  marginTop: 8,
+                  backgroundColor:
+                    turmaId === 5
+                      ? "#3F6FE5"
+                      : "#E8ECF4"
+                }
+              ]}
+              onPress={() => setTurmaId(5)}
+            >
+              <Text
+                style={{
+                  color:
+                    turmaId === 5
+                      ? "#FFFFFF"
+                      : "#40454D",
+                  fontSize: 13,
+                  fontWeight: "600"
+                }}
+              >
+                3º Ano B
+              </Text>
+            </TouchableOpacity>
+
+          </View>
+
+          <TouchableOpacity
+            style={styles.primaryButton}
+            onPress={cadastrarUsuario}
+            disabled={carregando}
+          >
+            {carregando ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.primaryButtonText}>
+                Cadastrar
+              </Text>
+            )}
           </TouchableOpacity>
 
           <Text style={styles.bottomText}>
             Já tem conta?{" "}
-            <Text style={styles.link} onPress={() => onNavigate("login")}>Entrar</Text>
+            <Text
+              style={styles.link}
+              onPress={() => onNavigate("login")}
+            >
+              Entrar
+            </Text>
           </Text>
+
         </View>
       </ScrollView>
     </View>
