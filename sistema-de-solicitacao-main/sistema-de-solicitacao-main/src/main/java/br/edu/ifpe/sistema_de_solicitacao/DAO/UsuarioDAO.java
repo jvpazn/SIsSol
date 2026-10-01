@@ -8,6 +8,14 @@ import org.springframework.stereotype.Repository;
 import br.edu.ifpe.sistema_de_solicitacao.Model.Usuario;
 
 @Repository
-public interface UsuarioDAO extends JpaRepository<Usuario, Long>{
-    Optional<Usuario> findByMatriculaAndSenha(String matricula, String senha);
+public interface UsuarioDAO extends JpaRepository<Usuario, Long> {
+
+    Optional<Usuario> findByMatriculaAndSenha(
+        String matricula,
+        String senha
+    );
+
+    Optional<Usuario> findByMatricula(
+        String matricula
+    );
 }

@@ -34,7 +34,7 @@ public class Usuario {
     @Column(nullable = false, unique = true)
     private String matricula;
 
-    @Column(name = "tipo_usuario", insertable = false, updatable = false)
+    @Column(name = "tipo_usuario", nullable = false)
     private String tipoUsuario;
 
     @ManyToOne
@@ -45,18 +45,35 @@ public class Usuario {
     @OneToMany(mappedBy = "usuario")
     private List<Requesicao> requesicoes;
 
-    public Usuario() {}
+    public Usuario() {
+    }
 
-    public Usuario(String nome, String senha, String matricula, instituicao instituicao, List<Requesicao> requesicoes) {
+    public Usuario(
+        String nome,
+        String senha,
+        String matricula,
+        String tipoUsuario,
+        instituicao instituicao,
+        List<Requesicao> requesicoes
+    ) {
         this.nome = nome;
         this.senha = senha;
         this.matricula = matricula;
+        this.tipoUsuario = tipoUsuario;
         this.instituicao = instituicao;
         this.requesicoes = requesicoes;
     }
 
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
     public String getNome() {
-        return this.nome;
+        return nome;
     }
 
     public void setNome(String nome) {
@@ -64,7 +81,7 @@ public class Usuario {
     }
 
     public String getSenha() {
-        return this.senha;
+        return senha;
     }
 
     public void setSenha(String senha) {
@@ -72,15 +89,23 @@ public class Usuario {
     }
 
     public String getMatricula() {
-        return this.matricula;
+        return matricula;
     }
 
     public void setMatricula(String matricula) {
         this.matricula = matricula;
     }
 
+    public String getTipoUsuario() {
+        return tipoUsuario;
+    }
+
+    public void setTipoUsuario(String tipoUsuario) {
+        this.tipoUsuario = tipoUsuario;
+    }
+
     public instituicao getInstituicao() {
-        return this.instituicao;
+        return instituicao;
     }
 
     public void setInstituicao(instituicao instituicao) {
@@ -88,18 +113,10 @@ public class Usuario {
     }
 
     public List<Requesicao> getRequesicoes() {
-        return this.requesicoes;
+        return requesicoes;
     }
 
     public void setRequesicoes(List<Requesicao> requesicoes) {
         this.requesicoes = requesicoes;
-    }
-    
-    public Long getId() {
-        return this.id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
     }
 }

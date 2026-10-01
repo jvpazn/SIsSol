@@ -6,6 +6,5 @@ import org.springframework.stereotype.Repository;
 import br.edu.ifpe.sistema_de_solicitacao.Model.Aluno;
 
 @Repository
-public interface AlunoDAO extends JpaRepository<Aluno, Long>{
-    
+public interface AlunoDAO extends JpaRepository<Aluno, Long> {
 }

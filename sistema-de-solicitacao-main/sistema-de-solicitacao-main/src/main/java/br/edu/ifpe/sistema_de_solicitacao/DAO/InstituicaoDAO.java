@@ -6,5 +6,5 @@ import org.springframework.stereotype.Repository;
 import br.edu.ifpe.sistema_de_solicitacao.Model.instituicao;
 
 @Repository
-public interface InstituicaoDAO extends JpaRepository<instituicao, String> { 
+public interface InstituicaoDAO extends JpaRepository<instituicao, String> {
 }
