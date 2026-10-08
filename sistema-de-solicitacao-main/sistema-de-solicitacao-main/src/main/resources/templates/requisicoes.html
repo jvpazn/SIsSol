@@ -1,0 +1,31 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" lang="pt-br">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Lista de Requisições</title>
+  </head>
+  <body>
+    <h1>Chamados de Suporte Técnico</h1>
+
+    <table border="1">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Data</th>
+          <th>Tipo</th>
+          <th>Descrição</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr th:each="req : ${requisicoes}">
+          <td th:text="${req.id}">1</td>
+          <td th:text="${req.data}">2026-06-23</td>
+          <td th:text="${req.tipo}">MANUTENCAO_COMPUTADOR</td>
+          <td th:text="${req.descricao}">Descrição do problema</td>
+          <td th:text="${req.status}">AGUARDO</td>
+        </tr>
+      </tbody>
+    </table>
+  </body>
+</html>
