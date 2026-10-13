@@ -1,4 +1,3 @@
-
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
 import {
@@ -14,15 +13,7 @@ import {
   View,
 } from "react-native";
 
-// =====================================================
-// CONFIGURAÇÃO DA API
-// =====================================================
-
 const API_URL = "http://10.31.37.11:8080/api";
-
-// =====================================================
-// ÍCONE DO APLICATIVO
-// =====================================================
 
 function AppIcon() {
   return (
@@ -31,10 +22,6 @@ function AppIcon() {
     </View>
   );
 }
-
-// =====================================================
-// CAMPO REUTILIZÁVEL
-// =====================================================
 
 function Campo({
   label,
@@ -59,16 +46,11 @@ function Campo({
           name={icon}
           size={17}
           color="#9AA0A6"
-          style={
-            multiline ? styles.inputIconTop : styles.inputIcon
-          }
+          style={multiline ? styles.inputIconTop : styles.inputIcon}
         />
 
         <TextInput
-          style={[
-            styles.input,
-            multiline && styles.inputMultiline,
-          ]}
+          style={[styles.input, multiline && styles.inputMultiline]}
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
@@ -83,10 +65,6 @@ function Campo({
   );
 }
 
-// =====================================================
-// TELA DE LOGIN
-// =====================================================
-
 function LoginScreen({ onNavigate }) {
   const [matricula, setMatricula] = useState("");
   const [senha, setSenha] = useState("");
@@ -94,48 +72,35 @@ function LoginScreen({ onNavigate }) {
 
   const fazerLogin = async () => {
     if (!matricula.trim() || !senha.trim()) {
-      Alert.alert(
-        "Atenção",
-        "Preencha a matrícula e a senha!"
-      );
+      Alert.alert("Atenção", "Preencha a matrícula e a senha!");
       return;
     }
 
     setCarregando(true);
 
     try {
-      const resposta = await fetch(
-        `${API_URL}/usuarios/login`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            matricula: matricula.trim(),
-            senha: senha,
-          }),
-        }
-      );
+      const resposta = await fetch(`${API_URL}/usuarios/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          matricula: matricula.trim(),
+          senha: senha,
+        }),
+      });
 
       const resultado = await resposta.text();
 
       console.log("Resposta do login:", resultado);
 
       if (resposta.ok) {
-        // Login realizado com sucesso
         onNavigate("home");
       } else {
-        Alert.alert(
-          "Login inválido",
-          "Matrícula ou senha incorretos!"
-        );
+        Alert.alert("Login inválido", "Matrícula ou senha incorretos!");
       }
     } catch (erro) {
-      console.error(
-        "Erro ao conectar com o backend:",
-        erro
-      );
+      console.error("Erro ao conectar com o backend:", erro);
 
       Alert.alert(
         "Erro de conexão",
@@ -157,9 +122,7 @@ function LoginScreen({ onNavigate }) {
 
           <Text style={styles.title}>Login</Text>
 
-          <Text style={styles.subtitle}>
-            Acesse sua conta do sistema
-          </Text>
+          <Text style={styles.subtitle}>Acesse sua conta do sistema</Text>
 
           <Campo
             label="Matrícula"
@@ -187,9 +150,7 @@ function LoginScreen({ onNavigate }) {
               )
             }
           >
-            <Text style={styles.forgotText}>
-              Esqueceu sua senha?
-            </Text>
+            <Text style={styles.forgotText}>Esqueceu sua senha?</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -200,18 +161,13 @@ function LoginScreen({ onNavigate }) {
             {carregando ? (
               <ActivityIndicator color="#FFFFFF" />
             ) : (
-              <Text style={styles.primaryButtonText}>
-                Entrar
-              </Text>
+              <Text style={styles.primaryButtonText}>Entrar</Text>
             )}
           </TouchableOpacity>
 
           <Text style={styles.bottomText}>
             Não tem uma conta?{" "}
-            <Text
-              style={styles.link}
-              onPress={() => onNavigate("cadastro")}
-            >
+            <Text style={styles.link} onPress={() => onNavigate("cadastro")}>
               Criar conta
             </Text>
           </Text>
@@ -220,10 +176,6 @@ function LoginScreen({ onNavigate }) {
     </View>
   );
 }
-
-// =====================================================
-// TELA DE CADASTRO
-// =====================================================
 
 function CadastroScreen({ onNavigate }) {
   const [nome, setNome] = useState("");
@@ -241,62 +193,43 @@ function CadastroScreen({ onNavigate }) {
   ];
 
   const cadastrarUsuario = async () => {
-    if (
-      !nome.trim() ||
-      !matricula.trim() ||
-      !senha.trim()
-    ) {
-      Alert.alert(
-        "Atenção",
-        "Preencha nome, matrícula e senha!"
-      );
+    if (!nome.trim() || !matricula.trim() || !senha.trim()) {
+      Alert.alert("Atenção", "Preencha nome, matrícula e senha!");
       return;
     }
 
     setCarregando(true);
 
     try {
-      const resposta = await fetch(
-  `${API_URL}/usuarios/criar`,
-  {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      nome: nome.trim(),
-      matricula: matricula.trim(),
-      senha: senha,
-      turmaId: turmaId,
-    }),
-  }
-);
+      const resposta = await fetch(`${API_URL}/usuarios/criar`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          nome: nome.trim(),
+          matricula: matricula.trim(),
+          senha: senha,
+          turmaId: turmaId,
+        }),
+      });
 
       const resultado = await resposta.text();
 
-      console.log(
-        "Resposta do cadastro:",
-        resultado
-      );
+      console.log("Resposta do cadastro:", resultado);
 
       if (resposta.ok) {
-  setNome("");
-  setMatricula("");
-  setSenha("");
-  setTurmaId(1);
+        setNome("");
+        setMatricula("");
+        setSenha("");
+        setTurmaId(1);
 
-  Alert.alert(
-    "Cadastro realizado",
-    "Sua conta foi criada com sucesso!"
-  );
+        Alert.alert("Cadastro realizado", "Sua conta foi criada com sucesso!");
 
-  onNavigate("login");
-}
+        onNavigate("login");
+      }
     } catch (erro) {
-      console.error(
-        "Erro ao conectar com o backend:",
-        erro
-      );
+      console.error("Erro ao conectar com o backend:", erro);
 
       Alert.alert(
         "Erro de conexão",
@@ -318,9 +251,7 @@ function CadastroScreen({ onNavigate }) {
 
           <Text style={styles.title}>Cadastro</Text>
 
-          <Text style={styles.subtitle}>
-            Crie sua conta para começar
-          </Text>
+          <Text style={styles.subtitle}>Crie sua conta para começar</Text>
 
           <Campo
             label="Nome"
@@ -355,16 +286,14 @@ function CadastroScreen({ onNavigate }) {
                 key={turma.id}
                 style={[
                   styles.turmaButton,
-                  turmaId === turma.id &&
-                    styles.turmaButtonSelected,
+                  turmaId === turma.id && styles.turmaButtonSelected,
                 ]}
                 onPress={() => setTurmaId(turma.id)}
               >
                 <Text
                   style={[
                     styles.turmaButtonText,
-                    turmaId === turma.id &&
-                      styles.turmaButtonTextSelected,
+                    turmaId === turma.id && styles.turmaButtonTextSelected,
                   ]}
                 >
                   {turma.nome}
@@ -381,18 +310,13 @@ function CadastroScreen({ onNavigate }) {
             {carregando ? (
               <ActivityIndicator color="#FFFFFF" />
             ) : (
-              <Text style={styles.primaryButtonText}>
-                Cadastrar
-              </Text>
+              <Text style={styles.primaryButtonText}>Cadastrar</Text>
             )}
           </TouchableOpacity>
 
           <Text style={styles.bottomText}>
             Já tem uma conta?{" "}
-            <Text
-              style={styles.link}
-              onPress={() => onNavigate("login")}
-            >
+            <Text style={styles.link} onPress={() => onNavigate("login")}>
               Entrar
             </Text>
           </Text>
@@ -402,9 +326,97 @@ function CadastroScreen({ onNavigate }) {
   );
 }
 
-// =====================================================
-// TELA HOME
-// =====================================================
+function getStatusStyle(status) {
+  switch (status) {
+    case "AGUARDO":
+      return {
+        container: styles.badgePendente,
+        text: styles.badgeTextPendente,
+      };
+
+    case "CONCLUIDO":
+      return {
+        container: styles.badgeResolvido,
+        text: styles.badgeTextResolvido,
+      };
+
+    case "NEGADA":
+      return {
+        container: styles.badgeNegada,
+        text: styles.badgeTextNegada,
+      };
+
+    default:
+      return {
+        container: styles.badgeNovo,
+        text: styles.badgeTextNovo,
+      };
+  }
+}
+
+function CardSolicitacao({ item }) {
+  const statusStyle = getStatusStyle(item.status);
+  const tipo = item.tipo ? item.tipo.replace(/_/g, " ") : "GERAL";
+
+  return (
+    <TouchableOpacity
+      style={styles.chamadoCard}
+      activeOpacity={0.8}
+      onPress={() =>
+        Alert.alert(
+          tipo,
+          `Descrição: ${item.descricao || "Sem descrição"}\n\nStatus: ${
+            item.status || "NOVO"
+          }\n\nData: ${item.data || "Sem data"}`
+        )
+      }
+    >
+      <View style={styles.cardHeader}>
+        <Text style={styles.chamadoCategory} numberOfLines={1}>
+          {tipo}
+        </Text>
+
+        <View style={[styles.badge, statusStyle.container]}>
+          <Text style={[styles.badgeText, statusStyle.text]}>
+            {item.status || "NOVO"}
+          </Text>
+        </View>
+      </View>
+
+      <Text style={styles.chamadoTitle} numberOfLines={2}>
+        {item.descricao || "Sem descrição"}
+      </Text>
+
+      <View style={styles.cardFooter}>
+        <Text style={styles.chamadoDate}>{item.data || "Sem data"}</Text>
+
+        <Ionicons name="chevron-forward" size={16} color="#9AA0A6" />
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+function ColunaSolicitacoes({ titulo, itens, carregando, vazioTexto }) {
+  return (
+    <View style={styles.column}>
+      <Text style={styles.columnTitle}>{titulo}</Text>
+
+      {carregando ? (
+        <ActivityIndicator color="#3F6FE5" style={{ marginTop: 30 }} />
+      ) : itens.length === 0 ? (
+        <View style={styles.columnEmpty}>
+          <Ionicons name="document-text-outline" size={30} color="#B7BCC5" />
+
+          <Text style={styles.columnEmptyText}>{vazioTexto}</Text>
+        </View>
+      ) : (
+        itens.map((item, index) => (
+          <CardSolicitacao key={item.id ?? index} item={item} />
+        ))
+      )}
+    </View>
+  );
+}
 
 function HomeScreen({ onNavigate }) {
   const [chamados, setChamados] = useState([]);
@@ -414,42 +426,23 @@ function HomeScreen({ onNavigate }) {
     try {
       setCarregando(true);
 
-      const resposta = await fetch(
-        `${API_URL}/requisicoes`
-      );
+      const resposta = await fetch(`${API_URL}/requisicoes`);
 
       if (resposta.ok) {
         const dados = await resposta.json();
 
-        console.log(
-          "Requisições recebidas:",
-          dados
-        );
+        console.log("Requisições recebidas:", dados);
 
-        setChamados(
-          Array.isArray(dados) ? dados : []
-        );
+        setChamados(Array.isArray(dados) ? dados : []);
       } else {
-        console.error(
-          "A API retornou um erro:",
-          resposta.status
-        );
+        console.error("A API retornou um erro:", resposta.status);
 
-        Alert.alert(
-          "Erro",
-          "Não foi possível carregar as solicitações."
-        );
+        Alert.alert("Erro", "Não foi possível carregar as solicitações.");
       }
     } catch (erro) {
-      console.error(
-        "Erro ao conectar com o back-end:",
-        erro
-      );
+      console.error("Erro ao conectar com o back-end:", erro);
 
-      Alert.alert(
-        "Erro de conexão",
-        "Não foi possível carregar as solicitações."
-      );
+      Alert.alert("Erro de conexão", "Não foi possível carregar as solicitações.");
     } finally {
       setCarregando(false);
     }
@@ -459,196 +452,62 @@ function HomeScreen({ onNavigate }) {
     buscarRequisicoes();
   }, []);
 
-  const getStatusStyle = (status) => {
-    switch (status) {
-      case "AGUARDO":
-        return {
-          container: styles.badgePendente,
-          text: styles.badgeTextPendente,
-        };
-
-      case "CONCLUIDO":
-        return {
-          container: styles.badgeResolvido,
-          text: styles.badgeTextResolvido,
-        };
-
-      case "NEGADA":
-        return {
-          container: styles.badgeNegada,
-          text: styles.badgeTextNegada,
-        };
-
-      default:
-        return {
-          container: styles.badgeNovo,
-          text: styles.badgeTextNovo,
-        };
-    }
-  };
+  const suasSolicitacoes = [];
+  const solicitacoesRecentes = chamados;
 
   return (
     <View style={styles.homeContainer}>
       <View style={styles.headerBar}>
-        <Text style={styles.headerTitle}>
-          SISOL
-        </Text>
+        <Text style={styles.headerTitle}>SISOL</Text>
 
         <View style={styles.headerActions}>
-          {/* BOTÃO PERFIL */}
           <TouchableOpacity
             style={styles.headerButton}
             onPress={() => onNavigate("usuario")}
           >
-            <Ionicons
-              name="person-circle-outline"
-              size={26}
-              color="#FFFFFF"
-            />
+            <Ionicons name="person-circle-outline" size={26} color="#FFFFFF" />
           </TouchableOpacity>
 
-          {/* BOTÃO SAIR */}
           <TouchableOpacity
             style={styles.logoutButton}
             onPress={() => onNavigate("login")}
           >
-            <Ionicons
-              name="log-out-outline"
-              size={22}
-              color="#FFFFFF"
-            />
+            <Ionicons name="log-out-outline" size={22} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
       </View>
 
-      <ScrollView
-        contentContainerStyle={styles.homeScroll}
-      >
+      <ScrollView contentContainerStyle={styles.homeScroll}>
         <View style={styles.welcomeRow}>
-          <Text style={styles.welcomeText}>
-            Pedidos de Solicitação
-          </Text>
+          <Text style={styles.welcomeText}>Pedidos de Solicitação</Text>
 
           <TouchableOpacity
             style={styles.newButton}
-            onPress={() =>
-              onNavigate("novaRequisicao")
-            }
+            onPress={() => onNavigate("novaRequisicao")}
           >
-            <Text style={styles.newButtonText}>
-              + Novo
-            </Text>
+            <Text style={styles.newButtonText}>+ Novo</Text>
           </TouchableOpacity>
         </View>
 
-        {carregando ? (
-          <ActivityIndicator
-            size="large"
-            color="#3F6FE5"
-            style={{ marginTop: 50 }}
+        <View style={styles.columnsRow}>
+          <ColunaSolicitacoes
+            titulo="Suas solicitações"
+            itens={suasSolicitacoes}
+            carregando={false}
+            vazioTexto="Você ainda não criou nenhuma solicitação."
           />
-        ) : chamados.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Ionicons
-              name="document-text-outline"
-              size={45}
-              color="#B7BCC5"
-            />
 
-            <Text style={styles.emptyTitle}>
-              Nenhuma solicitação
-            </Text>
-
-            <Text style={styles.emptyText}>
-              Ainda não existem pedidos cadastrados.
-            </Text>
-          </View>
-        ) : (
-          chamados.map((item, index) => {
-            const statusStyle =
-              getStatusStyle(item.status);
-
-            return (
-              <TouchableOpacity
-                key={item.id ?? index}
-                style={styles.chamadoCard}
-                activeOpacity={0.8}
-                onPress={() =>
-                  Alert.alert(
-                    item.tipo
-                      ? item.tipo.replace(/_/g, " ")
-                      : "GERAL",
-                    `Descrição: ${
-                      item.descricao ||
-                      "Sem descrição"
-                    }\n\nStatus: ${
-                      item.status || "NOVO"
-                    }\n\nData: ${
-                      item.data || "Sem data"
-                    }`
-                  )
-                }
-              >
-                <View style={styles.cardHeader}>
-                  <Text
-                    style={styles.chamadoCategory}
-                  >
-                    {item.tipo
-                      ? item.tipo.replace(/_/g, " ")
-                      : "GERAL"}
-                  </Text>
-
-                  <View
-                    style={[
-                      styles.badge,
-                      statusStyle.container,
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.badgeText,
-                        statusStyle.text,
-                      ]}
-                    >
-                      {item.status || "NOVO"}
-                    </Text>
-                  </View>
-                </View>
-
-                <Text
-                  style={styles.chamadoTitle}
-                  numberOfLines={2}
-                >
-                  {item.descricao ||
-                    "Sem descrição"}
-                </Text>
-
-                <View style={styles.cardFooter}>
-                  <Text
-                    style={styles.chamadoDate}
-                  >
-                    Data:{" "}
-                    {item.data || "Sem data"}
-                  </Text>
-
-                  <Ionicons
-                    name="chevron-forward"
-                    size={16}
-                    color="#9AA0A6"
-                  />
-                </View>
-              </TouchableOpacity>
-            );
-          })
-        )}
+          <ColunaSolicitacoes
+            titulo="Solicitações recentes"
+            itens={solicitacoesRecentes}
+            carregando={carregando}
+            vazioTexto="Nenhuma solicitação recente."
+          />
+        </View>
       </ScrollView>
     </View>
   );
 }
-
-// =====================================================
-// TELA DE USUÁRIO / PERFIL
-// =====================================================
 
 function UsuarioScreen({ onNavigate }) {
   return (
@@ -658,119 +517,71 @@ function UsuarioScreen({ onNavigate }) {
           style={styles.backButton}
           onPress={() => onNavigate("home")}
         >
-          <Ionicons
-            name="arrow-back"
-            size={24}
-            color="#FFFFFF"
-          />
+          <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
         </TouchableOpacity>
 
-        <Text style={styles.innerHeaderTitle}>
-          Meu Perfil
-        </Text>
+        <Text style={styles.innerHeaderTitle}>Meu Perfil</Text>
 
         <View style={styles.headerSpacer} />
       </View>
 
-      <ScrollView
-        contentContainerStyle={styles.profileScroll}
-      >
+      <ScrollView contentContainerStyle={styles.profileScroll}>
         <View style={styles.profileCard}>
           <View style={styles.profileAvatar}>
-            <Ionicons
-              name="person"
-              size={45}
-              color="#3F6FE5"
-            />
+            <Ionicons name="person" size={45} color="#3F6FE5" />
           </View>
 
-          <Text style={styles.profileName}>
-            João da Silva
-          </Text>
+          <Text style={styles.profileName}>João da Silva</Text>
 
-          <Text style={styles.profileSubtitle}>
-            Usuário do sistema
-          </Text>
+          <Text style={styles.profileSubtitle}>Usuário do sistema</Text>
 
           <View style={styles.profileDivider} />
 
           <View style={styles.infoRow}>
             <View style={styles.infoIcon}>
-              <Ionicons
-                name="person-outline"
-                size={20}
-                color="#3F6FE5"
-              />
+              <Ionicons name="person-outline" size={20} color="#3F6FE5" />
             </View>
 
             <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>
-                Nome
-              </Text>
+              <Text style={styles.infoLabel}>Nome</Text>
 
-              <Text style={styles.infoValue}>
-                João da Silva
-              </Text>
+              <Text style={styles.infoValue}>João da Silva</Text>
             </View>
           </View>
 
           <View style={styles.infoRow}>
             <View style={styles.infoIcon}>
-              <Ionicons
-                name="card-outline"
-                size={20}
-                color="#3F6FE5"
-              />
+              <Ionicons name="card-outline" size={20} color="#3F6FE5" />
             </View>
 
             <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>
-                Matrícula
-              </Text>
+              <Text style={styles.infoLabel}>Matrícula</Text>
 
-              <Text style={styles.infoValue}>
-                2026123456
-              </Text>
+              <Text style={styles.infoValue}>2026123456</Text>
             </View>
           </View>
 
           <View style={styles.infoRow}>
             <View style={styles.infoIcon}>
-              <Ionicons
-                name="mail-outline"
-                size={20}
-                color="#3F6FE5"
-              />
+              <Ionicons name="mail-outline" size={20} color="#3F6FE5" />
             </View>
 
             <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>
-                E-mail
-              </Text>
+              <Text style={styles.infoLabel}>E-mail</Text>
 
-              <Text style={styles.infoValue}>
-                joao.silva@email.com
-              </Text>
+              <Text style={styles.infoValue}>joao.silva@email.com</Text>
             </View>
           </View>
 
           <View style={styles.infoRow}>
             <View style={styles.infoIcon}>
-              <Ionicons
-                name="school-outline"
-                size={20}
-                color="#3F6FE5"
-              />
+              <Ionicons name="school-outline" size={20} color="#3F6FE5" />
             </View>
 
             <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>
-                Setor
-              </Text>
+              <Text style={styles.infoLabel}>Setor</Text>
 
-              <Text style={styles.infoValue}>
-                Tecnologia da Informação
-              </Text>
+              <Text style={styles.infoValue}>Tecnologia da Informação</Text>
             </View>
           </View>
 
@@ -783,27 +594,15 @@ function UsuarioScreen({ onNavigate }) {
               )
             }
           >
-            <Ionicons
-              name="create-outline"
-              size={18}
-              color="#3F6FE5"
-            />
+            <Ionicons name="create-outline" size={18} color="#3F6FE5" />
 
-            <Text
-              style={styles.secondaryButtonText}
-            >
-              Editar informações
-            </Text>
+            <Text style={styles.secondaryButtonText}>Editar informações</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
     </View>
   );
 }
-
-// =====================================================
-// TELA DE NOVA REQUISIÇÃO
-// =====================================================
 
 function NovaRequisicaoScreen({ onNavigate }) {
   const [tipo, setTipo] = useState("");
@@ -812,62 +611,25 @@ function NovaRequisicaoScreen({ onNavigate }) {
   const [local, setLocal] = useState("");
 
   const tipos = [
-    {
-      nome: "Suporte",
-      icone: "headset-outline",
-    },
-    {
-      nome: "Manutenção",
-      icone: "construct-outline",
-    },
-    {
-      nome: "Infraestrutura",
-      icone: "business-outline",
-    },
-    {
-      nome: "Rede",
-      icone: "wifi-outline",
-    },
-    {
-      nome: "Outro",
-      icone:
-        "ellipsis-horizontal-circle-outline",
-    },
+    { nome: "Suporte", icone: "headset-outline" },
+    { nome: "Manutenção", icone: "construct-outline" },
+    { nome: "Infraestrutura", icone: "business-outline" },
+    { nome: "Rede", icone: "wifi-outline" },
+    { nome: "Outro", icone: "ellipsis-horizontal-circle-outline" },
   ];
 
   const enviarRequisicao = () => {
-    if (
-      !tipo ||
-      !titulo.trim() ||
-      !descricao.trim()
-    ) {
-      Alert.alert(
-        "Atenção",
-        "Preencha o tipo, título e descrição."
-      );
+    if (!tipo || !titulo.trim() || !descricao.trim()) {
+      Alert.alert("Atenção", "Preencha o tipo, título e descrição.");
       return;
     }
 
-    /*
-      Aqui mantemos a mesma lógica do segundo código:
-      a tela funciona como protótipo.
-
-      Quando você tiver o endpoint de criação das
-      requisições no Spring Boot, este método pode ser
-      conectado ao backend.
-    */
-
-    Alert.alert(
-      "Sucesso",
-      "Solicitação criada com sucesso!",
-      [
-        {
-          text: "OK",
-          onPress: () =>
-            onNavigate("home"),
-        },
-      ]
-    );
+    Alert.alert("Sucesso", "Solicitação criada com sucesso!", [
+      {
+        text: "OK",
+        onPress: () => onNavigate("home"),
+      },
+    ]);
   };
 
   return (
@@ -877,38 +639,26 @@ function NovaRequisicaoScreen({ onNavigate }) {
           style={styles.backButton}
           onPress={() => onNavigate("home")}
         >
-          <Ionicons
-            name="arrow-back"
-            size={24}
-            color="#FFFFFF"
-          />
+          <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
         </TouchableOpacity>
 
-        <Text style={styles.innerHeaderTitle}>
-          Nova Solicitação
-        </Text>
+        <Text style={styles.innerHeaderTitle}>Nova Solicitação</Text>
 
         <View style={styles.headerSpacer} />
       </View>
 
       <ScrollView
-        contentContainerStyle={
-          styles.newRequestScroll
-        }
+        contentContainerStyle={styles.newRequestScroll}
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.formCard}>
-          <Text style={styles.formTitle}>
-            Criar nova requisição
-          </Text>
+          <Text style={styles.formTitle}>Criar nova requisição</Text>
 
           <Text style={styles.formSubtitle}>
             Preencha as informações abaixo.
           </Text>
 
-          <Text style={styles.label}>
-            Tipo de solicitação
-          </Text>
+          <Text style={styles.label}>Tipo de solicitação</Text>
 
           <View style={styles.typeGrid}>
             {tipos.map((item) => (
@@ -916,28 +666,20 @@ function NovaRequisicaoScreen({ onNavigate }) {
                 key={item.nome}
                 style={[
                   styles.typeButton,
-                  tipo === item.nome &&
-                    styles.typeButtonSelected,
+                  tipo === item.nome && styles.typeButtonSelected,
                 ]}
-                onPress={() =>
-                  setTipo(item.nome)
-                }
+                onPress={() => setTipo(item.nome)}
               >
                 <Ionicons
                   name={item.icone}
                   size={19}
-                  color={
-                    tipo === item.nome
-                      ? "#FFFFFF"
-                      : "#3F6FE5"
-                  }
+                  color={tipo === item.nome ? "#FFFFFF" : "#3F6FE5"}
                 />
 
                 <Text
                   style={[
                     styles.typeButtonText,
-                    tipo === item.nome &&
-                      styles.typeButtonTextSelected,
+                    tipo === item.nome && styles.typeButtonTextSelected,
                   ]}
                 >
                   {item.nome}
@@ -975,15 +717,9 @@ function NovaRequisicaoScreen({ onNavigate }) {
             style={styles.primaryButton}
             onPress={enviarRequisicao}
           >
-            <Ionicons
-              name="send-outline"
-              size={18}
-              color="#FFFFFF"
-            />
+            <Ionicons name="send-outline" size={18} color="#FFFFFF" />
 
-            <Text style={styles.primaryButtonText}>
-              Enviar solicitação
-            </Text>
+            <Text style={styles.primaryButtonText}>Enviar solicitação</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -991,65 +727,38 @@ function NovaRequisicaoScreen({ onNavigate }) {
   );
 }
 
-// =====================================================
-// APP PRINCIPAL / NAVEGAÇÃO
-// =====================================================
-
 export default function App() {
-  const [currentScreen, setCurrentScreen] =
-    useState("login");
+  const [currentScreen, setCurrentScreen] = useState("login");
 
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
-      behavior={
-        Platform.OS === "ios"
-          ? "padding"
-          : "height"
-      }
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       {currentScreen === "login" && (
-        <LoginScreen
-          onNavigate={setCurrentScreen}
-        />
+        <LoginScreen onNavigate={setCurrentScreen} />
       )}
 
       {currentScreen === "cadastro" && (
-        <CadastroScreen
-          onNavigate={setCurrentScreen}
-        />
+        <CadastroScreen onNavigate={setCurrentScreen} />
       )}
 
       {currentScreen === "home" && (
-        <HomeScreen
-          onNavigate={setCurrentScreen}
-        />
+        <HomeScreen onNavigate={setCurrentScreen} />
       )}
 
       {currentScreen === "usuario" && (
-        <UsuarioScreen
-          onNavigate={setCurrentScreen}
-        />
+        <UsuarioScreen onNavigate={setCurrentScreen} />
       )}
 
       {currentScreen === "novaRequisicao" && (
-        <NovaRequisicaoScreen
-          onNavigate={setCurrentScreen}
-        />
+        <NovaRequisicaoScreen onNavigate={setCurrentScreen} />
       )}
     </KeyboardAvoidingView>
   );
 }
 
-// =====================================================
-// ESTILOS
-// =====================================================
-
 const styles = StyleSheet.create({
-  // =========================
-  // LOGIN / CADASTRO
-  // =========================
-
   screen: {
     flex: 1,
     backgroundColor: "#F7F9FC",
@@ -1175,7 +884,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     flexDirection: "row",
     marginTop: 4,
-
     shadowColor: "#3F6FE5",
     shadowOffset: {
       width: 0,
@@ -1205,10 +913,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
-  // =========================
-  // TURMAS
-  // =========================
-
   turmaContainer: {
     marginBottom: 18,
   },
@@ -1235,10 +939,6 @@ const styles = StyleSheet.create({
   turmaButtonTextSelected: {
     color: "#FFFFFF",
   },
-
-  // =========================
-  // HOME
-  // =========================
 
   homeContainer: {
     flex: 1,
@@ -1312,9 +1012,38 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
-  // =========================
-  // CARDS DAS SOLICITAÇÕES
-  // =========================
+  columnsRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+  },
+
+  column: {
+    flex: 1,
+    marginHorizontal: 4,
+  },
+
+  columnTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#40454D",
+    marginBottom: 10,
+  },
+
+  columnEmpty: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E0E3E8",
+    padding: 16,
+    alignItems: "center",
+  },
+
+  columnEmptyText: {
+    color: "#9AA0A6",
+    fontSize: 11,
+    textAlign: "center",
+    marginTop: 8,
+  },
 
   chamadoCard: {
     backgroundColor: "#FFFFFF",
@@ -1412,38 +1141,6 @@ const styles = StyleSheet.create({
     color: "#9AA0A6",
   },
 
-  // =========================
-  // NENHUM RESULTADO
-  // =========================
-
-  emptyContainer: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#E0E3E8",
-    padding: 35,
-    alignItems: "center",
-    marginTop: 20,
-  },
-
-  emptyTitle: {
-    color: "#40454D",
-    fontSize: 16,
-    fontWeight: "700",
-    marginTop: 12,
-  },
-
-  emptyText: {
-    color: "#9AA0A6",
-    fontSize: 12,
-    textAlign: "center",
-    marginTop: 5,
-  },
-
-  // =========================
-  // HEADER INTERNO
-  // =========================
-
   innerHeader: {
     height: 64,
     backgroundColor: "#3F6FE5",
@@ -1469,10 +1166,6 @@ const styles = StyleSheet.create({
   headerSpacer: {
     width: 40,
   },
-
-  // =========================
-  // PERFIL
-  // =========================
 
   profileScroll: {
     padding: 20,
@@ -1578,10 +1271,6 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
 
-  // =========================
-  // NOVA REQUISIÇÃO
-  // =========================
-
   newRequestScroll: {
     padding: 20,
     maxWidth: 600,
@@ -1656,4 +1345,3 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
   },
 });
-
