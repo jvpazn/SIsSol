@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { Picker } from "@react-native-picker/picker";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -13,7 +14,7 @@ import {
   View,
 } from "react-native";
 
-const API_URL = "http://10.31.37.11:8080/api";
+const API_URL = "http://10.31.37.12:8080/api";
 
 function AppIcon() {
   return (
@@ -354,7 +355,7 @@ function getStatusStyle(status) {
   }
 }
 
-function CardSolicitacao({ item }) {
+function CardRequisicao({ item }) {
   const statusStyle = getStatusStyle(item.status);
   const tipo = item.tipo ? item.tipo.replace(/_/g, " ") : "GERAL";
 
@@ -396,7 +397,7 @@ function CardSolicitacao({ item }) {
   );
 }
 
-function ColunaSolicitacoes({ titulo, itens, carregando, vazioTexto }) {
+function ColunaRequisicoes({ titulo, itens, carregando, vazioTexto }) {
   return (
     <View style={styles.column}>
       <Text style={styles.columnTitle}>{titulo}</Text>
@@ -411,7 +412,7 @@ function ColunaSolicitacoes({ titulo, itens, carregando, vazioTexto }) {
         </View>
       ) : (
         itens.map((item, index) => (
-          <CardSolicitacao key={item.id ?? index} item={item} />
+          <CardRequisicao key={item.id ?? index} item={item} />
         ))
       )}
     </View>
@@ -437,12 +438,12 @@ function HomeScreen({ onNavigate }) {
       } else {
         console.error("A API retornou um erro:", resposta.status);
 
-        Alert.alert("Erro", "Não foi possível carregar as solicitações.");
+        Alert.alert("Erro", "Não foi possível carregar as requisições.");
       }
     } catch (erro) {
       console.error("Erro ao conectar com o back-end:", erro);
 
-      Alert.alert("Erro de conexão", "Não foi possível carregar as solicitações.");
+      Alert.alert("Erro de conexão", "Não foi possível carregar as requisições.");
     } finally {
       setCarregando(false);
     }
@@ -452,8 +453,8 @@ function HomeScreen({ onNavigate }) {
     buscarRequisicoes();
   }, []);
 
-  const suasSolicitacoes = [];
-  const solicitacoesRecentes = chamados;
+  const suasRequisicoes = [];
+  const requisicoesRecentes = chamados;
 
   return (
     <View style={styles.homeContainer}>
@@ -479,7 +480,7 @@ function HomeScreen({ onNavigate }) {
 
       <ScrollView contentContainerStyle={styles.homeScroll}>
         <View style={styles.welcomeRow}>
-          <Text style={styles.welcomeText}>Pedidos de Solicitação</Text>
+          <Text style={styles.welcomeText}>Pedidos de Requisição</Text>
 
           <TouchableOpacity
             style={styles.newButton}
@@ -490,18 +491,18 @@ function HomeScreen({ onNavigate }) {
         </View>
 
         <View style={styles.columnsRow}>
-          <ColunaSolicitacoes
-            titulo="Suas solicitações"
-            itens={suasSolicitacoes}
+          <ColunaRequisicoes
+            titulo="Suas requisições"
+            itens={suasRequisicoes}
             carregando={false}
-            vazioTexto="Você ainda não criou nenhuma solicitação."
+            vazioTexto="Você ainda não criou nenhuma requisição."
           />
 
-          <ColunaSolicitacoes
-            titulo="Solicitações recentes"
-            itens={solicitacoesRecentes}
+          <ColunaRequisicoes
+            titulo="Requisições recentes"
+            itens={requisicoesRecentes}
             carregando={carregando}
-            vazioTexto="Nenhuma solicitação recente."
+            vazioTexto="Nenhuma requisição recente."
           />
         </View>
       </ScrollView>
@@ -624,7 +625,7 @@ function NovaRequisicaoScreen({ onNavigate }) {
       return;
     }
 
-    Alert.alert("Sucesso", "Solicitação criada com sucesso!", [
+    Alert.alert("Sucesso", "Requisição criada com sucesso!", [
       {
         text: "OK",
         onPress: () => onNavigate("home"),
@@ -642,7 +643,7 @@ function NovaRequisicaoScreen({ onNavigate }) {
           <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
         </TouchableOpacity>
 
-        <Text style={styles.innerHeaderTitle}>Nova Solicitação</Text>
+        <Text style={styles.innerHeaderTitle}>Nova Requisição</Text>
 
         <View style={styles.headerSpacer} />
       </View>
@@ -658,34 +659,20 @@ function NovaRequisicaoScreen({ onNavigate }) {
             Preencha as informações abaixo.
           </Text>
 
-          <Text style={styles.label}>Tipo de solicitação</Text>
+          <Text style={styles.label}>Tipo de requisição</Text>
 
-          <View style={styles.typeGrid}>
-            {tipos.map((item) => (
-              <TouchableOpacity
-                key={item.nome}
-                style={[
-                  styles.typeButton,
-                  tipo === item.nome && styles.typeButtonSelected,
-                ]}
-                onPress={() => setTipo(item.nome)}
-              >
-                <Ionicons
-                  name={item.icone}
-                  size={19}
-                  color={tipo === item.nome ? "#FFFFFF" : "#3F6FE5"}
-                />
-
-                <Text
-                  style={[
-                    styles.typeButtonText,
-                    tipo === item.nome && styles.typeButtonTextSelected,
-                  ]}
-                >
-                  {item.nome}
-                </Text>
-              </TouchableOpacity>
-            ))}
+          <View style={styles.pickerContainer}>
+            <Picker
+              selectedValue={tipo}
+              onValueChange={(itemValue) => setTipo(itemValue)}
+              style={styles.picker}
+              dropdownIconColor="#40454D"
+            >
+              <Picker.Item label="Selecione um tipo..." value="" color="#9AA0A6" />
+              {tipos.map((item) => (
+                <Picker.Item key={item.nome} label={item.nome} value={item.nome} color="#292D32" />
+              ))}
+            </Picker>
           </View>
 
           <Campo
@@ -700,7 +687,7 @@ function NovaRequisicaoScreen({ onNavigate }) {
             label="Descrição"
             value={descricao}
             onChangeText={setDescricao}
-            placeholder="Descreva o problema ou solicitação"
+            placeholder="Descreva o problema ou requisição"
             icon="document-text-outline"
             multiline
           />
@@ -719,7 +706,7 @@ function NovaRequisicaoScreen({ onNavigate }) {
           >
             <Ionicons name="send-outline" size={18} color="#FFFFFF" />
 
-            <Text style={styles.primaryButtonText}>Enviar solicitação</Text>
+            <Text style={styles.primaryButtonText}>Enviar requisição</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -1307,41 +1294,18 @@ const styles = StyleSheet.create({
     marginBottom: 22,
   },
 
-  typeGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    marginBottom: 18,
-  },
-
-  typeButton: {
-    width: "48%",
-    minHeight: 62,
+  pickerContainer: {
+    height: 46,
     borderWidth: 1,
-    borderColor: "#DCE1E8",
+    borderColor: "#E0E3E8",
     borderRadius: 8,
-    paddingVertical: 11,
-    paddingHorizontal: 8,
-    alignItems: "center",
-    justifyContent: "center",
     backgroundColor: "#FFFFFF",
-    marginRight: "2%",
-    marginBottom: 8,
+    marginBottom: 14,
+    justifyContent: "center",
   },
 
-  typeButtonSelected: {
-    backgroundColor: "#3F6FE5",
-    borderColor: "#3F6FE5",
-  },
-
-  typeButtonText: {
-    color: "#3F6FE5",
-    fontSize: 11,
-    fontWeight: "600",
-    textAlign: "center",
-    marginTop: 5,
-  },
-
-  typeButtonTextSelected: {
-    color: "#FFFFFF",
+  picker: {
+    height: "100%",
+    width: "100%",
   },
 });
