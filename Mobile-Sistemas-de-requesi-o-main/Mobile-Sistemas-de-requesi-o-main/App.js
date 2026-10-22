@@ -1,5 +1,4 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Picker } from "@react-native-picker/picker";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -14,7 +13,11 @@ import {
   View,
 } from "react-native";
 
-const API_URL = "http://10.31.37.12:8080/api";
+const API_URL = "http://10.31.35.108:8080/api";
+
+// =====================================================
+// COMPONENTES REUTILIZÁVEIS
+// =====================================================
 
 function AppIcon() {
   return (
@@ -51,7 +54,10 @@ function Campo({
         />
 
         <TextInput
-          style={[styles.input, multiline && styles.inputMultiline]}
+          style={[
+            styles.input,
+            multiline && styles.inputMultiline,
+          ]}
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
@@ -66,6 +72,110 @@ function Campo({
   );
 }
 
+// Menu suspenso personalizado
+function Dropdown({
+  label,
+  value,
+  onValueChange,
+  options,
+  placeholder,
+}) {
+  const [aberto, setAberto] = useState(false);
+
+  const selecionado = options.find(
+    (item) => item.value === value
+  );
+
+  return (
+    <View
+      style={[
+        styles.dropdownWrapper,
+        aberto && styles.dropdownWrapperOpen,
+      ]}
+    >
+      {label ? (
+        <Text style={styles.label}>{label}</Text>
+      ) : null}
+
+      <TouchableOpacity
+        style={[
+          styles.dropdownButton,
+          aberto && styles.dropdownButtonOpen,
+        ]}
+        onPress={() => setAberto((estado) => !estado)}
+        activeOpacity={0.8}
+      >
+        <Text
+          style={[
+            styles.dropdownText,
+            !selecionado && styles.dropdownPlaceholder,
+          ]}
+          numberOfLines={1}
+        >
+          {selecionado ? selecionado.label : placeholder}
+        </Text>
+
+        <Ionicons
+          name={aberto ? "chevron-up" : "chevron-down"}
+          size={18}
+          color="#737B89"
+        />
+      </TouchableOpacity>
+
+      {aberto && (
+        <View style={styles.dropdownOptions}>
+          <ScrollView
+            style={styles.dropdownList}
+            nestedScrollEnabled
+            keyboardShouldPersistTaps="handled"
+          >
+            {options.map((item) => {
+              const ativo = item.value === value;
+
+              return (
+                <TouchableOpacity
+                  key={item.value}
+                  style={[
+                    styles.dropdownOption,
+                    ativo && styles.dropdownOptionSelected,
+                  ]}
+                  onPress={() => {
+                    onValueChange(item.value);
+                    setAberto(false);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text
+                    style={[
+                      styles.dropdownOptionText,
+                      ativo &&
+                        styles.dropdownOptionTextSelected,
+                    ]}
+                  >
+                    {item.label}
+                  </Text>
+
+                  {ativo && (
+                    <Ionicons
+                      name="checkmark"
+                      size={18}
+                      color="#3F6FE5"
+                    />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+      )}
+    </View>
+  );
+}
+
+// =====================================================
+// TELA DE LOGIN
+// =====================================================
+
 function LoginScreen({ onNavigate }) {
   const [matricula, setMatricula] = useState("");
   const [senha, setSenha] = useState("");
@@ -73,23 +183,29 @@ function LoginScreen({ onNavigate }) {
 
   const fazerLogin = async () => {
     if (!matricula.trim() || !senha.trim()) {
-      Alert.alert("Atenção", "Preencha a matrícula e a senha!");
+      Alert.alert(
+        "Atenção",
+        "Preencha a matrícula e a senha!"
+      );
       return;
     }
 
     setCarregando(true);
 
     try {
-      const resposta = await fetch(`${API_URL}/usuarios/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          matricula: matricula.trim(),
-          senha: senha,
-        }),
-      });
+      const resposta = await fetch(
+        `${API_URL}/usuarios/login`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            matricula: matricula.trim(),
+            senha,
+          }),
+        }
+      );
 
       const resultado = await resposta.text();
 
@@ -98,14 +214,17 @@ function LoginScreen({ onNavigate }) {
       if (resposta.ok) {
         onNavigate("home");
       } else {
-        Alert.alert("Login inválido", "Matrícula ou senha incorretos!");
+        Alert.alert(
+          "Login inválido",
+          "Matrícula ou senha incorretos!"
+        );
       }
     } catch (erro) {
       console.error("Erro ao conectar com o backend:", erro);
 
       Alert.alert(
         "Erro de conexão",
-        "Não foi possível conectar ao servidor.\n\nVerifique se o Spring Boot está rodando e se o IP está correto."
+        "Não foi possível conectar ao servidor. Verifique se o Spring Boot está rodando e se o IP está correto."
       );
     } finally {
       setCarregando(false);
@@ -123,7 +242,9 @@ function LoginScreen({ onNavigate }) {
 
           <Text style={styles.title}>Login</Text>
 
-          <Text style={styles.subtitle}>Acesse sua conta do sistema</Text>
+          <Text style={styles.subtitle}>
+            Acesse sua conta do sistema
+          </Text>
 
           <Campo
             label="Matrícula"
@@ -151,7 +272,9 @@ function LoginScreen({ onNavigate }) {
               )
             }
           >
-            <Text style={styles.forgotText}>Esqueceu sua senha?</Text>
+            <Text style={styles.forgotText}>
+              Esqueceu sua senha?
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -162,13 +285,18 @@ function LoginScreen({ onNavigate }) {
             {carregando ? (
               <ActivityIndicator color="#FFFFFF" />
             ) : (
-              <Text style={styles.primaryButtonText}>Entrar</Text>
+              <Text style={styles.primaryButtonText}>
+                Entrar
+              </Text>
             )}
           </TouchableOpacity>
 
           <Text style={styles.bottomText}>
             Não tem uma conta?{" "}
-            <Text style={styles.link} onPress={() => onNavigate("cadastro")}>
+            <Text
+              style={styles.link}
+              onPress={() => onNavigate("cadastro")}
+            >
               Criar conta
             </Text>
           </Text>
@@ -177,6 +305,10 @@ function LoginScreen({ onNavigate }) {
     </View>
   );
 }
+
+// =====================================================
+// TELA DE CADASTRO
+// =====================================================
 
 function CadastroScreen({ onNavigate }) {
   const [nome, setNome] = useState("");
@@ -194,26 +326,36 @@ function CadastroScreen({ onNavigate }) {
   ];
 
   const cadastrarUsuario = async () => {
-    if (!nome.trim() || !matricula.trim() || !senha.trim()) {
-      Alert.alert("Atenção", "Preencha nome, matrícula e senha!");
+    if (
+      !nome.trim() ||
+      !matricula.trim() ||
+      !senha.trim()
+    ) {
+      Alert.alert(
+        "Atenção",
+        "Preencha nome, matrícula e senha!"
+      );
       return;
     }
 
     setCarregando(true);
 
     try {
-      const resposta = await fetch(`${API_URL}/usuarios/criar`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          nome: nome.trim(),
-          matricula: matricula.trim(),
-          senha: senha,
-          turmaId: turmaId,
-        }),
-      });
+      const resposta = await fetch(
+        `${API_URL}/usuarios/criar`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            nome: nome.trim(),
+            matricula: matricula.trim(),
+            senha,
+            turmaId,
+          }),
+        }
+      );
 
       const resultado = await resposta.text();
 
@@ -225,16 +367,24 @@ function CadastroScreen({ onNavigate }) {
         setSenha("");
         setTurmaId(1);
 
-        Alert.alert("Cadastro realizado", "Sua conta foi criada com sucesso!");
+        Alert.alert(
+          "Cadastro realizado",
+          "Sua conta foi criada com sucesso!"
+        );
 
         onNavigate("login");
+      } else {
+        Alert.alert(
+          "Erro no cadastro",
+          resultado || "Não foi possível cadastrar o usuário."
+        );
       }
     } catch (erro) {
       console.error("Erro ao conectar com o backend:", erro);
 
       Alert.alert(
         "Erro de conexão",
-        "Não foi possível conectar ao servidor.\n\nVerifique se o Spring Boot está rodando."
+        "Não foi possível conectar ao servidor. Verifique se o Spring Boot está rodando."
       );
     } finally {
       setCarregando(false);
@@ -252,7 +402,9 @@ function CadastroScreen({ onNavigate }) {
 
           <Text style={styles.title}>Cadastro</Text>
 
-          <Text style={styles.subtitle}>Crie sua conta para começar</Text>
+          <Text style={styles.subtitle}>
+            Crie sua conta para começar
+          </Text>
 
           <Campo
             label="Nome"
@@ -287,14 +439,16 @@ function CadastroScreen({ onNavigate }) {
                 key={turma.id}
                 style={[
                   styles.turmaButton,
-                  turmaId === turma.id && styles.turmaButtonSelected,
+                  turmaId === turma.id &&
+                    styles.turmaButtonSelected,
                 ]}
                 onPress={() => setTurmaId(turma.id)}
               >
                 <Text
                   style={[
                     styles.turmaButtonText,
-                    turmaId === turma.id && styles.turmaButtonTextSelected,
+                    turmaId === turma.id &&
+                      styles.turmaButtonTextSelected,
                   ]}
                 >
                   {turma.nome}
@@ -311,13 +465,18 @@ function CadastroScreen({ onNavigate }) {
             {carregando ? (
               <ActivityIndicator color="#FFFFFF" />
             ) : (
-              <Text style={styles.primaryButtonText}>Cadastrar</Text>
+              <Text style={styles.primaryButtonText}>
+                Cadastrar
+              </Text>
             )}
           </TouchableOpacity>
 
           <Text style={styles.bottomText}>
             Já tem uma conta?{" "}
-            <Text style={styles.link} onPress={() => onNavigate("login")}>
+            <Text
+              style={styles.link}
+              onPress={() => onNavigate("login")}
+            >
               Entrar
             </Text>
           </Text>
@@ -327,97 +486,9 @@ function CadastroScreen({ onNavigate }) {
   );
 }
 
-function getStatusStyle(status) {
-  switch (status) {
-    case "AGUARDO":
-      return {
-        container: styles.badgePendente,
-        text: styles.badgeTextPendente,
-      };
-
-    case "CONCLUIDO":
-      return {
-        container: styles.badgeResolvido,
-        text: styles.badgeTextResolvido,
-      };
-
-    case "NEGADA":
-      return {
-        container: styles.badgeNegada,
-        text: styles.badgeTextNegada,
-      };
-
-    default:
-      return {
-        container: styles.badgeNovo,
-        text: styles.badgeTextNovo,
-      };
-  }
-}
-
-function CardRequisicao({ item }) {
-  const statusStyle = getStatusStyle(item.status);
-  const tipo = item.tipo ? item.tipo.replace(/_/g, " ") : "GERAL";
-
-  return (
-    <TouchableOpacity
-      style={styles.chamadoCard}
-      activeOpacity={0.8}
-      onPress={() =>
-        Alert.alert(
-          tipo,
-          `Descrição: ${item.descricao || "Sem descrição"}\n\nStatus: ${
-            item.status || "NOVO"
-          }\n\nData: ${item.data || "Sem data"}`
-        )
-      }
-    >
-      <View style={styles.cardHeader}>
-        <Text style={styles.chamadoCategory} numberOfLines={1}>
-          {tipo}
-        </Text>
-
-        <View style={[styles.badge, statusStyle.container]}>
-          <Text style={[styles.badgeText, statusStyle.text]}>
-            {item.status || "NOVO"}
-          </Text>
-        </View>
-      </View>
-
-      <Text style={styles.chamadoTitle} numberOfLines={2}>
-        {item.descricao || "Sem descrição"}
-      </Text>
-
-      <View style={styles.cardFooter}>
-        <Text style={styles.chamadoDate}>{item.data || "Sem data"}</Text>
-
-        <Ionicons name="chevron-forward" size={16} color="#9AA0A6" />
-      </View>
-    </TouchableOpacity>
-  );
-}
-
-function ColunaRequisicoes({ titulo, itens, carregando, vazioTexto }) {
-  return (
-    <View style={styles.column}>
-      <Text style={styles.columnTitle}>{titulo}</Text>
-
-      {carregando ? (
-        <ActivityIndicator color="#3F6FE5" style={{ marginTop: 30 }} />
-      ) : itens.length === 0 ? (
-        <View style={styles.columnEmpty}>
-          <Ionicons name="document-text-outline" size={30} color="#B7BCC5" />
-
-          <Text style={styles.columnEmptyText}>{vazioTexto}</Text>
-        </View>
-      ) : (
-        itens.map((item, index) => (
-          <CardRequisicao key={item.id ?? index} item={item} />
-        ))
-      )}
-    </View>
-  );
-}
+// =====================================================
+// TELA INICIAL
+// =====================================================
 
 function HomeScreen({ onNavigate }) {
   const [chamados, setChamados] = useState([]);
@@ -427,23 +498,39 @@ function HomeScreen({ onNavigate }) {
     try {
       setCarregando(true);
 
-      const resposta = await fetch(`${API_URL}/requisicoes`);
+      const resposta = await fetch(
+        `${API_URL}/requisicoes`
+      );
 
       if (resposta.ok) {
         const dados = await resposta.json();
 
         console.log("Requisições recebidas:", dados);
 
-        setChamados(Array.isArray(dados) ? dados : []);
+        setChamados(
+          Array.isArray(dados) ? dados : []
+        );
       } else {
-        console.error("A API retornou um erro:", resposta.status);
+        console.error(
+          "A API retornou um erro:",
+          resposta.status
+        );
 
-        Alert.alert("Erro", "Não foi possível carregar as requisições.");
+        Alert.alert(
+          "Erro",
+          "Não foi possível carregar as solicitações."
+        );
       }
     } catch (erro) {
-      console.error("Erro ao conectar com o back-end:", erro);
+      console.error(
+        "Erro ao conectar com o backend:",
+        erro
+      );
 
-      Alert.alert("Erro de conexão", "Não foi possível carregar as requisições.");
+      Alert.alert(
+        "Erro de conexão",
+        "Não foi possível carregar as solicitações."
+      );
     } finally {
       setCarregando(false);
     }
@@ -453,8 +540,33 @@ function HomeScreen({ onNavigate }) {
     buscarRequisicoes();
   }, []);
 
-  const suasRequisicoes = [];
-  const requisicoesRecentes = chamados;
+  const getStatusStyle = (status) => {
+    switch (status) {
+      case "AGUARDO":
+        return {
+          container: styles.badgePendente,
+          text: styles.badgeTextPendente,
+        };
+
+      case "CONCLUIDO":
+        return {
+          container: styles.badgeResolvido,
+          text: styles.badgeTextResolvido,
+        };
+
+      case "NEGADA":
+        return {
+          container: styles.badgeNegada,
+          text: styles.badgeTextNegada,
+        };
+
+      default:
+        return {
+          container: styles.badgeNovo,
+          text: styles.badgeTextNovo,
+        };
+    }
+  };
 
   return (
     <View style={styles.homeContainer}>
@@ -466,49 +578,130 @@ function HomeScreen({ onNavigate }) {
             style={styles.headerButton}
             onPress={() => onNavigate("usuario")}
           >
-            <Ionicons name="person-circle-outline" size={26} color="#FFFFFF" />
+            <Ionicons
+              name="person-circle-outline"
+              size={26}
+              color="#FFFFFF"
+            />
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.logoutButton}
             onPress={() => onNavigate("login")}
           >
-            <Ionicons name="log-out-outline" size={22} color="#FFFFFF" />
+            <Ionicons
+              name="log-out-outline"
+              size={22}
+              color="#FFFFFF"
+            />
           </TouchableOpacity>
         </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.homeScroll}>
         <View style={styles.welcomeRow}>
-          <Text style={styles.welcomeText}>Pedidos de Requisição</Text>
+          <Text style={styles.welcomeText}>
+            Pedidos de Solicitação
+          </Text>
 
           <TouchableOpacity
             style={styles.newButton}
             onPress={() => onNavigate("novaRequisicao")}
           >
-            <Text style={styles.newButtonText}>+ Novo</Text>
+            <Text style={styles.newButtonText}>
+              + Novo
+            </Text>
           </TouchableOpacity>
         </View>
 
-        <View style={styles.columnsRow}>
-          <ColunaRequisicoes
-            titulo="Suas requisições"
-            itens={suasRequisicoes}
-            carregando={false}
-            vazioTexto="Você ainda não criou nenhuma requisição."
+        {carregando ? (
+          <ActivityIndicator
+            size="large"
+            color="#3F6FE5"
+            style={{ marginTop: 50 }}
           />
+        ) : chamados.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Ionicons
+              name="document-text-outline"
+              size={40}
+              color="#9AA0A6"
+            />
 
-          <ColunaRequisicoes
-            titulo="Requisições recentes"
-            itens={requisicoesRecentes}
-            carregando={carregando}
-            vazioTexto="Nenhuma requisição recente."
-          />
-        </View>
+            <Text style={styles.emptyTitle}>
+              Nenhuma solicitação
+            </Text>
+
+            <Text style={styles.emptyText}>
+              Você ainda não possui solicitações cadastradas.
+            </Text>
+          </View>
+        ) : (
+          chamados.map((item, index) => {
+            const statusStyle = getStatusStyle(item.status);
+
+            return (
+              <View
+                key={item.id ?? index}
+                style={styles.chamadoCard}
+              >
+                <View style={styles.cardHeader}>
+                  <Text style={styles.chamadoCategory}>
+                    {item.tipo
+                      ? item.tipo.replace(/_/g, " ")
+                      : "Solicitação"}
+                  </Text>
+
+                  <View
+                    style={[
+                      styles.badge,
+                      statusStyle.container,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.badgeText,
+                        statusStyle.text,
+                      ]}
+                    >
+                      {item.status || "NOVO"}
+                    </Text>
+                  </View>
+                </View>
+
+                <Text style={styles.chamadoTitle}>
+                  {item.tipo || "Equipamento"}
+                </Text>
+
+                <Text style={styles.infoValue}>
+                  {item.descricao || "Sem descrição"}
+                </Text>
+
+                {item.local ? (
+                  <Text style={styles.chamadoDate}>
+                    Local: {item.local}
+                  </Text>
+                ) : null}
+
+                <View style={styles.cardFooter}>
+                  <Text style={styles.chamadoDate}>
+                    {item.data
+                      ? `Data: ${item.data}`
+                      : "Data não informada"}
+                  </Text>
+                </View>
+              </View>
+            );
+          })
+        )}
       </ScrollView>
     </View>
   );
 }
+
+// =====================================================
+// TELA DE PERFIL
+// =====================================================
 
 function UsuarioScreen({ onNavigate }) {
   return (
@@ -518,10 +711,16 @@ function UsuarioScreen({ onNavigate }) {
           style={styles.backButton}
           onPress={() => onNavigate("home")}
         >
-          <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+          <Ionicons
+            name="arrow-back"
+            size={24}
+            color="#FFFFFF"
+          />
         </TouchableOpacity>
 
-        <Text style={styles.innerHeaderTitle}>Meu Perfil</Text>
+        <Text style={styles.innerHeaderTitle}>
+          Meu Perfil
+        </Text>
 
         <View style={styles.headerSpacer} />
       </View>
@@ -529,60 +728,54 @@ function UsuarioScreen({ onNavigate }) {
       <ScrollView contentContainerStyle={styles.profileScroll}>
         <View style={styles.profileCard}>
           <View style={styles.profileAvatar}>
-            <Ionicons name="person" size={45} color="#3F6FE5" />
+            <Ionicons
+              name="person-outline"
+              size={48}
+              color="#3F6FE5"
+            />
           </View>
 
-          <Text style={styles.profileName}>João da Silva</Text>
+          <Text style={styles.profileName}>
+            Usuário SISOL
+          </Text>
 
-          <Text style={styles.profileSubtitle}>Usuário do sistema</Text>
+          <Text style={styles.profileSubtitle}>
+            Informações da conta
+          </Text>
 
           <View style={styles.profileDivider} />
 
           <View style={styles.infoRow}>
             <View style={styles.infoIcon}>
-              <Ionicons name="person-outline" size={20} color="#3F6FE5" />
+              <Ionicons
+                name="person-outline"
+                size={20}
+                color="#3F6FE5"
+              />
             </View>
 
             <View style={styles.infoContent}>
               <Text style={styles.infoLabel}>Nome</Text>
-
-              <Text style={styles.infoValue}>João da Silva</Text>
+              <Text style={styles.infoValue}>
+                Usuário cadastrado
+              </Text>
             </View>
           </View>
 
           <View style={styles.infoRow}>
             <View style={styles.infoIcon}>
-              <Ionicons name="card-outline" size={20} color="#3F6FE5" />
-            </View>
-
-            <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>Matrícula</Text>
-
-              <Text style={styles.infoValue}>2026123456</Text>
-            </View>
-          </View>
-
-          <View style={styles.infoRow}>
-            <View style={styles.infoIcon}>
-              <Ionicons name="mail-outline" size={20} color="#3F6FE5" />
-            </View>
-
-            <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>E-mail</Text>
-
-              <Text style={styles.infoValue}>joao.silva@email.com</Text>
-            </View>
-          </View>
-
-          <View style={styles.infoRow}>
-            <View style={styles.infoIcon}>
-              <Ionicons name="school-outline" size={20} color="#3F6FE5" />
+              <Ionicons
+                name="school-outline"
+                size={20}
+                color="#3F6FE5"
+              />
             </View>
 
             <View style={styles.infoContent}>
               <Text style={styles.infoLabel}>Setor</Text>
-
-              <Text style={styles.infoValue}>Tecnologia da Informação</Text>
+              <Text style={styles.infoValue}>
+                Tecnologia da Informação
+              </Text>
             </View>
           </View>
 
@@ -595,9 +788,15 @@ function UsuarioScreen({ onNavigate }) {
               )
             }
           >
-            <Ionicons name="create-outline" size={18} color="#3F6FE5" />
+            <Ionicons
+              name="create-outline"
+              size={18}
+              color="#3F6FE5"
+            />
 
-            <Text style={styles.secondaryButtonText}>Editar informações</Text>
+            <Text style={styles.secondaryButtonText}>
+              Editar informações
+            </Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -605,32 +804,180 @@ function UsuarioScreen({ onNavigate }) {
   );
 }
 
+// =====================================================
+// TELA DE NOVA SOLICITAÇÃO
+// =====================================================
+
 function NovaRequisicaoScreen({ onNavigate }) {
-  const [tipo, setTipo] = useState("");
-  const [titulo, setTitulo] = useState("");
+  const [equipamento, setEquipamento] = useState("");
   const [descricao, setDescricao] = useState("");
   const [local, setLocal] = useState("");
+  const [carregando, setCarregando] = useState(false);
 
-  const tipos = [
-    { nome: "Suporte", icone: "headset-outline" },
-    { nome: "Manutenção", icone: "construct-outline" },
-    { nome: "Infraestrutura", icone: "business-outline" },
-    { nome: "Rede", icone: "wifi-outline" },
-    { nome: "Outro", icone: "ellipsis-horizontal-circle-outline" },
+  const tiposRequisicao = [
+    {
+      label: "Instalação de equipamento",
+      value: "INSTALACAO_EQUIPAMENTO",
+    },
+    {
+      label: "Configuração de VPN",
+      value: "CONFIGURACAO_VPN",
+    },
+    {
+      label: "Configuração de Wi-Fi",
+      value: "CONFIGURACAO_WIFI",
+    },
+    {
+      label: "Instalação de software padrão",
+      value: "INSTALACAO_SOFTWARE_PADRAO",
+    },
+    {
+      label: "Substituição de equipamento",
+      value: "SUBSTITUICAO_EQUIPAMENTO",
+    },
+    {
+      label: "Manutenção de cabos",
+      value: "MANUTENCAO_CABOS",
+    },
+    {
+      label: "Manutenção de projetor",
+      value: "MANUTENCAO_PROJETOR",
+    },
+    {
+      label: "Queda de internet",
+      value: "QUEDA_INTERNET",
+    },
+    {
+      label: "Manutenção de computador",
+      value: "MANUTENCAO_COMPUTADOR",
+    },
+    {
+      label: "Instalação de software específico",
+      value: "INSTALACAO_SOFTWARE_ESPECIFICO",
+    },
   ];
 
-  const enviarRequisicao = () => {
-    if (!tipo || !titulo.trim() || !descricao.trim()) {
-      Alert.alert("Atenção", "Preencha o tipo, título e descrição.");
+  const locaisRequisicao = [
+    { label: "Lab 01", value: "Lab 01" },
+    { label: "Lab 02", value: "Lab 02" },
+    { label: "Lab 03", value: "Lab 03" },
+    { label: "Lab 04", value: "Lab 04" },
+    { label: "Lab 05", value: "Lab 05" },
+    { label: "Lab 06", value: "Lab 06" },
+    { label: "Lab 07", value: "Lab 07" },
+    { label: "Lab 08", value: "Lab 08" },
+  ];
+
+  const enviarRequisicao = async () => {
+    if (
+      !equipamento ||
+      !descricao.trim() ||
+      !local
+    ) {
+      Alert.alert(
+        "Atenção",
+        "Selecione o tipo de solicitação, escolha o laboratório e preencha a descrição."
+      );
       return;
     }
 
-    Alert.alert("Sucesso", "Requisição criada com sucesso!", [
-      {
-        text: "OK",
-        onPress: () => onNavigate("home"),
-      },
-    ]);
+    const tipoValido = tiposRequisicao.some(
+      (tipo) => tipo.value === equipamento
+    );
+
+    const localValido = locaisRequisicao.some(
+      (item) => item.value === local
+    );
+
+    if (!tipoValido || !localValido) {
+      Alert.alert(
+        "Dados inválidos",
+        "Selecione um tipo de solicitação e um laboratório válidos."
+      );
+      return;
+    }
+
+    setCarregando(true);
+
+    try {
+      const corpo = {
+        tipo: equipamento,
+        descricao: descricao.trim(),
+        local,
+        status: "AGUARDO",
+        data: new Date().toISOString().slice(0, 10),
+      };
+
+      console.log(
+        "Enviando solicitação:",
+        JSON.stringify(corpo, null, 2)
+      );
+
+      const resposta = await fetch(
+        `${API_URL}/requisicoes/criar`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify(corpo),
+        }
+      );
+
+      const resultado = await resposta.text();
+
+      if (!resposta.ok) {
+        console.error(
+          "Erro ao salvar solicitação:",
+          resposta.status,
+          resultado
+        );
+
+        Alert.alert(
+          "Não foi possível salvar",
+          `Erro ${resposta.status}: ${
+            resultado ||
+            "O servidor não informou detalhes."
+          }`
+        );
+
+        return;
+      }
+
+      console.log(
+        "Solicitação salva com sucesso:",
+        resultado
+      );
+
+      Alert.alert(
+        "Solicitação salva",
+        "Sua solicitação foi registrada com sucesso.",
+        [
+          {
+            text: "OK",
+            onPress: () => {
+              setEquipamento("");
+              setDescricao("");
+              setLocal("");
+              onNavigate("home");
+            },
+          },
+        ]
+      );
+    } catch (erro) {
+      console.error(
+        "Erro ao enviar solicitação:",
+        erro
+      );
+
+      Alert.alert(
+        "Erro de conexão",
+        "Não foi possível conectar ao backend. Verifique se o Spring Boot está rodando e se o endereço da API está correto."
+      );
+    } finally {
+      setCarregando(false);
+    }
   };
 
   return (
@@ -640,10 +987,16 @@ function NovaRequisicaoScreen({ onNavigate }) {
           style={styles.backButton}
           onPress={() => onNavigate("home")}
         >
-          <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+          <Ionicons
+            name="arrow-back"
+            size={24}
+            color="#FFFFFF"
+          />
         </TouchableOpacity>
 
-        <Text style={styles.innerHeaderTitle}>Nova Requisição</Text>
+        <Text style={styles.innerHeaderTitle}>
+          Nova Solicitação
+        </Text>
 
         <View style={styles.headerSpacer} />
       </View>
@@ -653,66 +1006,73 @@ function NovaRequisicaoScreen({ onNavigate }) {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.formCard}>
-          <Text style={styles.formTitle}>Criar nova requisição</Text>
-
-          <Text style={styles.formSubtitle}>
-            Preencha as informações abaixo.
+          <Text style={styles.formTitle}>
+            Criar nova solicitação
           </Text>
 
-          <Text style={styles.label}>Tipo de requisição</Text>
+          <Text style={styles.formSubtitle}>
+            Selecione o equipamento e descreva o que está acontecendo.
+          </Text>
 
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={tipo}
-              onValueChange={(itemValue) => setTipo(itemValue)}
-              style={styles.picker}
-              dropdownIconColor="#40454D"
-            >
-              <Picker.Item label="Selecione um tipo..." value="" color="#9AA0A6" />
-              {tipos.map((item) => (
-                <Picker.Item key={item.nome} label={item.nome} value={item.nome} color="#292D32" />
-              ))}
-            </Picker>
-          </View>
+          <Dropdown
+            label="Equipamento ou item"
+            value={equipamento}
+            onValueChange={setEquipamento}
+            options={tiposRequisicao}
+            placeholder="Selecione o tipo de solicitação"
+          />
 
-          <Campo
-            label="Título"
-            value={titulo}
-            onChangeText={setTitulo}
-            placeholder="Ex.: Computador não liga"
-            icon="text-outline"
+
+          <Dropdown
+            label="Local"
+            value={local}
+            onValueChange={setLocal}
+            options={locaisRequisicao}
+            placeholder="Selecione o laboratório"
           />
 
           <Campo
-            label="Descrição"
+            label="Descrição do problema"
             value={descricao}
             onChangeText={setDescricao}
-            placeholder="Descreva o problema ou requisição"
+            placeholder="Ex.: O monitor não liga ou o cabo está danificado"
             icon="document-text-outline"
             multiline
           />
 
-          <Campo
-            label="Local"
-            value={local}
-            onChangeText={setLocal}
-            placeholder="Ex.: Laboratório 02"
-            icon="location-outline"
-          />
-
           <TouchableOpacity
-            style={styles.primaryButton}
+            style={[
+              styles.primaryButton,
+              carregando && { opacity: 0.7 },
+            ]}
             onPress={enviarRequisicao}
+            disabled={carregando}
           >
-            <Ionicons name="send-outline" size={18} color="#FFFFFF" />
+            {carregando ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <>
+                <Ionicons
+                  name="send-outline"
+                  size={18}
+                  color="#FFFFFF"
+                />
 
-            <Text style={styles.primaryButtonText}>Enviar requisição</Text>
+                <Text style={styles.primaryButtonText}>
+                  Enviar solicitação
+                </Text>
+              </>
+            )}
           </TouchableOpacity>
         </View>
       </ScrollView>
     </View>
   );
 }
+
+// =====================================================
+// COMPONENTE PRINCIPAL
+// =====================================================
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState("login");
@@ -739,11 +1099,17 @@ export default function App() {
       )}
 
       {currentScreen === "novaRequisicao" && (
-        <NovaRequisicaoScreen onNavigate={setCurrentScreen} />
+        <NovaRequisicaoScreen
+          onNavigate={setCurrentScreen}
+        />
       )}
     </KeyboardAvoidingView>
   );
 }
+
+// =====================================================
+// ESTILOS
+// =====================================================
 
 const styles = StyleSheet.create({
   screen: {
@@ -765,10 +1131,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 24,
     shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 5,
-    },
+    shadowOffset: { width: 0, height: 5 },
     shadowOpacity: 0.08,
     shadowRadius: 15,
     elevation: 5,
@@ -864,18 +1227,16 @@ const styles = StyleSheet.create({
   },
 
   primaryButton: {
-    height: 46,
+    minHeight: 46,
     backgroundColor: "#3F6FE5",
     borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "row",
     marginTop: 4,
+    paddingHorizontal: 12,
     shadowColor: "#3F6FE5",
-    shadowOffset: {
-      width: 0,
-      height: 3,
-    },
+    shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.2,
     shadowRadius: 5,
     elevation: 3,
@@ -999,39 +1360,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
-  columnsRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-  },
-
-  column: {
-    flex: 1,
-    marginHorizontal: 4,
-  },
-
-  columnTitle: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#40454D",
-    marginBottom: 10,
-  },
-
-  columnEmpty: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#E0E3E8",
-    padding: 16,
-    alignItems: "center",
-  },
-
-  columnEmptyText: {
-    color: "#9AA0A6",
-    fontSize: 11,
-    textAlign: "center",
-    marginTop: 8,
-  },
-
   chamadoCard: {
     backgroundColor: "#FFFFFF",
     borderRadius: 12,
@@ -1040,10 +1368,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E0E3E8",
     shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
     shadowRadius: 6,
     elevation: 2,
@@ -1128,6 +1453,30 @@ const styles = StyleSheet.create({
     color: "#9AA0A6",
   },
 
+  emptyContainer: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E0E3E8",
+    padding: 35,
+    alignItems: "center",
+    marginTop: 20,
+  },
+
+  emptyTitle: {
+    color: "#40454D",
+    fontSize: 16,
+    fontWeight: "700",
+    marginTop: 12,
+  },
+
+  emptyText: {
+    color: "#9AA0A6",
+    fontSize: 12,
+    textAlign: "center",
+    marginTop: 5,
+  },
+
   innerHeader: {
     height: 64,
     backgroundColor: "#3F6FE5",
@@ -1168,10 +1517,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E0E3E8",
     shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
     shadowRadius: 6,
     elevation: 2,
@@ -1272,10 +1618,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E0E3E8",
     shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
     shadowRadius: 6,
     elevation: 2,
@@ -1294,18 +1637,85 @@ const styles = StyleSheet.create({
     marginBottom: 22,
   },
 
-  pickerContainer: {
-    height: 46,
+  // Estilos do menu personalizado
+  dropdownWrapper: {
+    marginBottom: 14,
+    width: "100%",
+    position: "relative",
+    zIndex: 10,
+  },
+
+  dropdownWrapperOpen: {
+    zIndex: 100,
+    elevation: 10,
+  },
+
+  dropdownButton: {
+    minHeight: 46,
     borderWidth: 1,
     borderColor: "#E0E3E8",
     borderRadius: 8,
     backgroundColor: "#FFFFFF",
-    marginBottom: 14,
-    justifyContent: "center",
+    paddingHorizontal: 13,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
 
-  picker: {
-    height: "100%",
-    width: "100%",
+  dropdownButtonOpen: {
+    borderColor: "#3F6FE5",
+  },
+
+  dropdownText: {
+    flex: 1,
+    color: "#292D32",
+    fontSize: 13,
+    marginRight: 10,
+  },
+
+  dropdownPlaceholder: {
+    color: "#9AA0A6",
+  },
+
+  dropdownOptions: {
+    marginTop: 5,
+    borderWidth: 1,
+    borderColor: "#E0E3E8",
+    borderRadius: 8,
+    backgroundColor: "#FFFFFF",
+    overflow: "hidden",
+    elevation: 8,
+    zIndex: 1000,
+  },
+
+  dropdownList: {
+    maxHeight: 210,
+  },
+
+  dropdownOption: {
+    minHeight: 43,
+    paddingHorizontal: 13,
+    paddingVertical: 11,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderBottomWidth: 1,
+    borderBottomColor: "#F0F2F5",
+  },
+
+  dropdownOptionSelected: {
+    backgroundColor: "#EEF3FF",
+  },
+
+  dropdownOptionText: {
+    flex: 1,
+    fontSize: 13,
+    color: "#40454D",
+    marginRight: 8,
+  },
+
+  dropdownOptionTextSelected: {
+    color: "#3F6FE5",
+    fontWeight: "600",
   },
 });
