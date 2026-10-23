@@ -858,127 +858,103 @@ function NovaRequisicaoScreen({ onNavigate }) {
   ];
 
   const locaisRequisicao = [
-    { label: "Lab 01", value: "Lab 01" },
-    { label: "Lab 02", value: "Lab 02" },
-    { label: "Lab 03", value: "Lab 03" },
-    { label: "Lab 04", value: "Lab 04" },
-    { label: "Lab 05", value: "Lab 05" },
-    { label: "Lab 06", value: "Lab 06" },
-    { label: "Lab 07", value: "Lab 07" },
-    { label: "Lab 08", value: "Lab 08" },
-  ];
+  { label: "Lab 01", value: "1" },
+  { label: "Lab 02", value: "2" },
+  { label: "Lab 03", value: "3" },
+  { label: "Lab 04", value: "4" },
+  { label: "Lab 05", value: "5" },
+  { label: "Lab 06", value: "6" },
+  { label: "Lab 07", value: "7" },
+  { label: "Lab 08", value: "8" },
+];
 
-  const enviarRequisicao = async () => {
-    if (
-      !equipamento ||
-      !descricao.trim() ||
-      !local
-    ) {
+  
+const enviarRequisicao = async () => {
+  if (!equipamento || !descricao.trim() || !local) {
+    Alert.alert(
+      "Atenção",
+      "Selecione o tipo, o laboratório e preencha a descrição."
+    );
+    return;
+  }
+
+
+  const salaId = salasPorNome[local];
+
+  const usuarioId = usuarioLogadoId;
+
+  if (!salaId || !usuarioId) {
+    Alert.alert(
+      "Dados incompletos",
+      "Não foi possível identificar a sala ou o usuário. Confira os IDs do banco e o login."
+    );
+    return;
+  }
+
+  setCarregando(true);
+
+  try {
+    const corpo = {
+  tipo: equipamento,
+  descricao: descricao.trim(),
+  data: new Date().toISOString().slice(0, 10),
+  status: "AGUARDO",
+  locais: [{ id: Number(local) }],
+  usuario: { id: Number(usuarioLogadoId) },
+};
+
+    const url = `${API_URL}/requisicoes/criar`;
+
+    console.log("POST:", url);
+    console.log("JSON:", JSON.stringify(corpo, null, 2));
+
+    const resposta = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(corpo),
+    });
+
+    const texto = await resposta.text();
+
+    console.log("HTTP:", resposta.status);
+    console.log("Resposta:", texto);
+
+    if (!resposta.ok) {
       Alert.alert(
-        "Atenção",
-        "Selecione o tipo de solicitação, escolha o laboratório e preencha a descrição."
+        `Erro HTTP ${resposta.status}`,
+        texto || "O servidor não conseguiu salvar a solicitação."
       );
       return;
     }
 
-    const tipoValido = tiposRequisicao.some(
-      (tipo) => tipo.value === equipamento
+    Alert.alert(
+      "Solicitação enviada!",
+      "O servidor confirmou o cadastro.",
+      [{
+        text: "OK",
+        onPress: () => {
+          setEquipamento("");
+          setDescricao("");
+          setLocal("");
+          onNavigate("home");
+        },
+      }]
     );
+  } catch (erro) {
+    console.error("Erro ao enviar:", erro);
 
-    const localValido = locaisRequisicao.some(
-      (item) => item.value === local
+    Alert.alert(
+      "Erro de conexão",
+      `${String(erro)}. Confira o endereço da API e o servidor.`
     );
+  } finally {
+    setCarregando(false);
+  }
+};
 
-    if (!tipoValido || !localValido) {
-      Alert.alert(
-        "Dados inválidos",
-        "Selecione um tipo de solicitação e um laboratório válidos."
-      );
-      return;
-    }
-
-    setCarregando(true);
-
-    try {
-      const corpo = {
-        tipo: equipamento,
-        descricao: descricao.trim(),
-        local,
-        status: "AGUARDO",
-        data: new Date().toISOString().slice(0, 10),
-      };
-
-      console.log(
-        "Enviando solicitação:",
-        JSON.stringify(corpo, null, 2)
-      );
-
-      const resposta = await fetch(
-        `${API_URL}/requisicoes/criar`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-          },
-          body: JSON.stringify(corpo),
-        }
-      );
-
-      const resultado = await resposta.text();
-
-      if (!resposta.ok) {
-        console.error(
-          "Erro ao salvar solicitação:",
-          resposta.status,
-          resultado
-        );
-
-        Alert.alert(
-          "Não foi possível salvar",
-          `Erro ${resposta.status}: ${
-            resultado ||
-            "O servidor não informou detalhes."
-          }`
-        );
-
-        return;
-      }
-
-      console.log(
-        "Solicitação salva com sucesso:",
-        resultado
-      );
-
-      Alert.alert(
-        "Solicitação salva",
-        "Sua solicitação foi registrada com sucesso.",
-        [
-          {
-            text: "OK",
-            onPress: () => {
-              setEquipamento("");
-              setDescricao("");
-              setLocal("");
-              onNavigate("home");
-            },
-          },
-        ]
-      );
-    } catch (erro) {
-      console.error(
-        "Erro ao enviar solicitação:",
-        erro
-      );
-
-      Alert.alert(
-        "Erro de conexão",
-        "Não foi possível conectar ao backend. Verifique se o Spring Boot está rodando e se o endereço da API está correto."
-      );
-    } finally {
-      setCarregando(false);
-    }
-  };
 
   return (
     <View style={styles.homeContainer}>
