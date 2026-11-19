@@ -1,5 +1,7 @@
 package br.edu.ifpe.sistema_de_solicitacao.Model;
+
 import jakarta.persistence.*;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 @Entity
 @Table(name = "turma")
@@ -14,25 +16,42 @@ public class Turmas {
 
     @ManyToOne
     @JoinColumn(name = "campus_id", nullable = false)
-    private Campus campus; 
-    
+    @JsonIgnore
+    private Campus campus;
+
     public Turmas() {
-        }
+    }
+
     public Turmas(Long id, String nome, Campus campus) {
         this.id = id;
         this.nome = nome;
         this.campus = campus;
     }
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+    public Long getId() {
+        return id;
+    }
 
-    public String getNome() { return nome; }
-    public void setNome(String nome) { this.nome = nome; }
+    public void setId(Long id) {
+        this.id = id;
+    }
 
-    public Campus getCampus() { return campus; }
-    public void setCampus(Campus campus) { this.campus = campus; }
-    
+    public String getNome() {
+        return nome;
+    }
+
+    public void setNome(String nome) {
+        this.nome = nome;
+    }
+
+    public Campus getCampus() {
+        return campus;
+    }
+
+    public void setCampus(Campus campus) {
+        this.campus = campus;
+    }
+
     @Override
     public String toString() {
         return nome;
