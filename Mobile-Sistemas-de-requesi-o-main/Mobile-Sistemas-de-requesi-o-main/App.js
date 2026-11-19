@@ -1,5 +1,4 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Picker } from "@react-native-picker/picker";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -14,7 +13,94 @@ import {
   View,
 } from "react-native";
 
-const API_URL = "http://192.168.56.1:8080/api";
+// DICA: Se estiver testando no emulador Android e o backend estiver na mesma máquina, 
+// o IP correto geralmente é http://10.0.2.2:8080/api em vez do IP da rede local.
+const API_URL = "http://10.31.37.12:8080/api";
+
+// =====================================================
+// FUNÇÕES AUXILIARES DE DATA
+// =====================================================
+
+/**
+ * Converte a data recebida do backend (String ISO, Array do Java [ano, mes, dia] ou timestamp)
+ * em um valor numérico em milissegundos para permitir ordenação precisa.
+ */
+function obterTimestampData(dataValor) {
+  if (!dataValor) return 0;
+
+  // Caso o Spring Boot serialize LocalDate como array [2026, 11, 19]
+  if (Array.isArray(dataValor) && dataValor.length >= 3) {
+    const [ano, mes, dia, hora = 0, min = 0, seg = 0] = dataValor;
+    return new Date(ano, mes - 1, dia, hora, min, seg).getTime();
+  }
+
+  // Caso seja uma string no formato "YYYY-MM-DD" (evita bug de fuso horário UTC)
+  if (typeof dataValor === "string") {
+    const apenasData = dataValor.split("T")[0];
+    const partes = apenasData.split("-");
+    if (partes.length === 3 && partes[0].length === 4) {
+      const ano = Number(partes[0]);
+      const mes = Number(partes[1]) - 1;
+      const dia = Number(partes[2]);
+      
+      // Se houver horário junto na string ISO
+      if (dataValor.includes("T")) {
+        const dt = new Date(dataValor);
+        if (!isNaN(dt.getTime())) return dt.getTime();
+      }
+      return new Date(ano, mes, dia).getTime();
+    }
+  }
+
+  const parsed = new Date(dataValor).getTime();
+  return isNaN(parsed) ? 0 : parsed;
+}
+
+/**
+ * Formata a data para o padrão brasileiro DD/MM/AAAA sem bug de fuso horário.
+ */
+function formatarData(dataValor) {
+  if (!dataValor) return "Data não informada";
+
+  if (Array.isArray(dataValor) && dataValor.length >= 3) {
+    const [ano, mes, dia] = dataValor;
+    return `${String(dia).padStart(2, "0")}/${String(mes).padStart(2, "0")}/${ano}`;
+  }
+
+  if (typeof dataValor === "string") {
+    const apenasData = dataValor.split("T")[0];
+    const partes = apenasData.split("-");
+    if (partes.length === 3 && partes[0].length === 4) {
+      return `${partes[2].padStart(2, "0")}/${partes[1].padStart(2, "0")}/${partes[0]}`;
+    }
+  }
+
+  const dataObj = new Date(dataValor);
+  if (!isNaN(dataObj.getTime())) {
+    const dia = String(dataObj.getDate()).padStart(2, "0");
+    const mes = String(dataObj.getMonth() + 1).padStart(2, "0");
+    const ano = dataObj.getFullYear();
+    return `${dia}/${mes}/${ano}`;
+  }
+
+  return String(dataValor);
+}
+
+/**
+ * Retorna a data atual local no formato YYYY-MM-DD (evita que após as 21h no Brasil
+ * o método toISOString() envie a data do dia seguinte).
+ */
+function obterDataHojeLocal() {
+  const hoje = new Date();
+  const ano = hoje.getFullYear();
+  const mes = String(hoje.getMonth() + 1).padStart(2, "0");
+  const dia = String(hoje.getDate()).padStart(2, "0");
+  return `${ano}-${mes}-${dia}`;
+}
+
+// =====================================================
+// COMPONENTES REUTILIZÁVEIS
+// =====================================================
 
 function AppIcon() {
   return (
@@ -51,7 +137,10 @@ function Campo({
         />
 
         <TextInput
-          style={[styles.input, multiline && styles.inputMultiline]}
+          style={[
+            styles.input,
+            multiline && styles.inputMultiline,
+          ]}
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
@@ -66,7 +155,110 @@ function Campo({
   );
 }
 
-function LoginScreen({ onNavigate }) {
+function Dropdown({
+  label,
+  value,
+  onValueChange,
+  options,
+  placeholder,
+}) {
+  const [aberto, setAberto] = useState(false);
+
+  const selecionado = options.find(
+    (item) => item.value === value
+  );
+
+  return (
+    <View
+      style={[
+        styles.dropdownWrapper,
+        aberto && styles.dropdownWrapperOpen,
+      ]}
+    >
+      {label ? (
+        <Text style={styles.label}>{label}</Text>
+      ) : null}
+
+      <TouchableOpacity
+        style={[
+          styles.dropdownButton,
+          aberto && styles.dropdownButtonOpen,
+        ]}
+        onPress={() => setAberto((estado) => !estado)}
+        activeOpacity={0.8}
+      >
+        <Text
+          style={[
+            styles.dropdownText,
+            !selecionado && styles.dropdownPlaceholder,
+          ]}
+          numberOfLines={1}
+        >
+          {selecionado ? selecionado.label : placeholder}
+        </Text>
+
+        <Ionicons
+          name={aberto ? "chevron-up" : "chevron-down"}
+          size={18}
+          color="#737B89"
+        />
+      </TouchableOpacity>
+
+      {aberto && (
+        <View style={styles.dropdownOptions}>
+          <ScrollView
+            style={styles.dropdownList}
+            nestedScrollEnabled
+            keyboardShouldPersistTaps="handled"
+          >
+            {options.map((item) => {
+              const ativo = item.value === value;
+
+              return (
+                <TouchableOpacity
+                  key={item.value}
+                  style={[
+                    styles.dropdownOption,
+                    ativo && styles.dropdownOptionSelected,
+                  ]}
+                  onPress={() => {
+                    onValueChange(item.value);
+                    setAberto(false);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text
+                    style={[
+                      styles.dropdownOptionText,
+                      ativo &&
+                        styles.dropdownOptionTextSelected,
+                    ]}
+                  >
+                    {item.label}
+                  </Text>
+
+                  {ativo && (
+                    <Ionicons
+                      name="checkmark"
+                      size={18}
+                      color="#3F6FE5"
+                    />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+      )}
+    </View>
+  );
+}
+
+// =====================================================
+// TELA DE LOGIN
+// =====================================================
+
+function LoginScreen({ onNavigate, onLogin }) {
   const [matricula, setMatricula] = useState("");
   const [senha, setSenha] = useState("");
   const [carregando, setCarregando] = useState(false);
@@ -84,28 +276,42 @@ function LoginScreen({ onNavigate }) {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Accept": "application/json"
         },
         body: JSON.stringify({
           matricula: matricula.trim(),
-          senha: senha,
+          senha,
         }),
       });
 
       const resultado = await resposta.text();
-
       console.log("Resposta do login:", resultado);
 
       if (resposta.ok) {
-        onNavigate("home");
+        let usuario = null;
+        try {
+          usuario = resultado ? JSON.parse(resultado) : null;
+        } catch (e) {
+          console.log("O login não retornou JSON válido:", resultado);
+        }
+
+        if (!usuario || (!usuario.id && !usuario.matricula)) {
+          Alert.alert(
+            "Erro",
+            "O servidor autenticou, mas não retornou os dados do usuário corretamente."
+          );
+          return;
+        }
+
+        onLogin(usuario);
       } else {
         Alert.alert("Login inválido", "Matrícula ou senha incorretos!");
       }
     } catch (erro) {
       console.error("Erro ao conectar com o backend:", erro);
-
       Alert.alert(
         "Erro de conexão",
-        "Não foi possível conectar ao servidor.\n\nVerifique se o Spring Boot está rodando e se o IP está correto."
+        "Não foi possível conectar ao servidor. Verifique se o backend está rodando e o IP configurado está correto."
       );
     } finally {
       setCarregando(false);
@@ -123,7 +329,9 @@ function LoginScreen({ onNavigate }) {
 
           <Text style={styles.title}>Login</Text>
 
-          <Text style={styles.subtitle}>Acesse sua conta do sistema</Text>
+          <Text style={styles.subtitle}>
+            Acesse sua conta do sistema
+          </Text>
 
           <Campo
             label="Matrícula"
@@ -151,7 +359,9 @@ function LoginScreen({ onNavigate }) {
               )
             }
           >
-            <Text style={styles.forgotText}>Esqueceu sua senha?</Text>
+            <Text style={styles.forgotText}>
+              Esqueceu sua senha?
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -162,13 +372,18 @@ function LoginScreen({ onNavigate }) {
             {carregando ? (
               <ActivityIndicator color="#FFFFFF" />
             ) : (
-              <Text style={styles.primaryButtonText}>Entrar</Text>
+              <Text style={styles.primaryButtonText}>
+                Entrar
+              </Text>
             )}
           </TouchableOpacity>
 
           <Text style={styles.bottomText}>
             Não tem uma conta?{" "}
-            <Text style={styles.link} onPress={() => onNavigate("cadastro")}>
+            <Text
+              style={styles.link}
+              onPress={() => onNavigate("cadastro")}
+            >
               Criar conta
             </Text>
           </Text>
@@ -177,6 +392,10 @@ function LoginScreen({ onNavigate }) {
     </View>
   );
 }
+
+// =====================================================
+// TELA DE CADASTRO
+// =====================================================
 
 function CadastroScreen({ onNavigate }) {
   const [nome, setNome] = useState("");
@@ -206,17 +425,18 @@ function CadastroScreen({ onNavigate }) {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Accept": "application/json",
         },
         body: JSON.stringify({
           nome: nome.trim(),
           matricula: matricula.trim(),
-          senha: senha,
+          senha,
           turmaId: turmaId,
+          turma: { id: turmaId }
         }),
       });
 
       const resultado = await resposta.text();
-
       console.log("Resposta do cadastro:", resultado);
 
       if (resposta.ok) {
@@ -226,15 +446,18 @@ function CadastroScreen({ onNavigate }) {
         setTurmaId(1);
 
         Alert.alert("Cadastro realizado", "Sua conta foi criada com sucesso!");
-
         onNavigate("login");
+      } else {
+        Alert.alert(
+          "Erro no cadastro",
+          resultado || "Não foi possível cadastrar o usuário."
+        );
       }
     } catch (erro) {
       console.error("Erro ao conectar com o backend:", erro);
-
       Alert.alert(
         "Erro de conexão",
-        "Não foi possível conectar ao servidor.\n\nVerifique se o Spring Boot está rodando."
+        "Não foi possível conectar ao servidor. Verifique se o backend está rodando."
       );
     } finally {
       setCarregando(false);
@@ -252,7 +475,9 @@ function CadastroScreen({ onNavigate }) {
 
           <Text style={styles.title}>Cadastro</Text>
 
-          <Text style={styles.subtitle}>Crie sua conta para começar</Text>
+          <Text style={styles.subtitle}>
+            Crie sua conta para começar
+          </Text>
 
           <Campo
             label="Nome"
@@ -317,7 +542,10 @@ function CadastroScreen({ onNavigate }) {
 
           <Text style={styles.bottomText}>
             Já tem uma conta?{" "}
-            <Text style={styles.link} onPress={() => onNavigate("login")}>
+            <Text
+              style={styles.link}
+              onPress={() => onNavigate("login")}
+            >
               Entrar
             </Text>
           </Text>
@@ -327,123 +555,59 @@ function CadastroScreen({ onNavigate }) {
   );
 }
 
-function getStatusStyle(status) {
-  switch (status) {
-    case "AGUARDO":
-      return {
-        container: styles.badgePendente,
-        text: styles.badgeTextPendente,
-      };
+// =====================================================
+// TELA INICIAL
+// =====================================================
 
-    case "CONCLUIDO":
-      return {
-        container: styles.badgeResolvido,
-        text: styles.badgeTextResolvido,
-      };
-
-    case "NEGADA":
-      return {
-        container: styles.badgeNegada,
-        text: styles.badgeTextNegada,
-      };
-
-    default:
-      return {
-        container: styles.badgeNovo,
-        text: styles.badgeTextNovo,
-      };
-  }
-}
-
-function CardRequisicao({ item }) {
-  const statusStyle = getStatusStyle(item.status);
-  const tipo = item.tipo ? item.tipo.replace(/_/g, " ") : "GERAL";
-
-  return (
-    <TouchableOpacity
-      style={styles.chamadoCard}
-      activeOpacity={0.8}
-      onPress={() =>
-        Alert.alert(
-          tipo,
-          `Descrição: ${item.descricao || "Sem descrição"}\n\nStatus: ${
-            item.status || "NOVO"
-          }\n\nData: ${item.data || "Sem data"}`
-        )
-      }
-    >
-      <View style={styles.cardHeader}>
-        <Text style={styles.chamadoCategory} numberOfLines={1}>
-          {tipo}
-        </Text>
-
-        <View style={[styles.badge, statusStyle.container]}>
-          <Text style={[styles.badgeText, statusStyle.text]}>
-            {item.status || "NOVO"}
-          </Text>
-        </View>
-      </View>
-
-      <Text style={styles.chamadoTitle} numberOfLines={2}>
-        {item.descricao || "Sem descrição"}
-      </Text>
-
-      <View style={styles.cardFooter}>
-        <Text style={styles.chamadoDate}>{item.data || "Sem data"}</Text>
-
-        <Ionicons name="chevron-forward" size={16} color="#9AA0A6" />
-      </View>
-    </TouchableOpacity>
-  );
-}
-
-function ColunaRequisicoes({ titulo, itens, carregando, vazioTexto }) {
-  return (
-    <View style={styles.column}>
-      <Text style={styles.columnTitle}>{titulo}</Text>
-
-      {carregando ? (
-        <ActivityIndicator color="#3F6FE5" style={{ marginTop: 30 }} />
-      ) : itens.length === 0 ? (
-        <View style={styles.columnEmpty}>
-          <Ionicons name="document-text-outline" size={30} color="#B7BCC5" />
-
-          <Text style={styles.columnEmptyText}>{vazioTexto}</Text>
-        </View>
-      ) : (
-        itens.map((item, index) => (
-          <CardRequisicao key={item.id ?? index} item={item} />
-        ))
-      )}
-    </View>
-  );
-}
-
-function HomeScreen({ onNavigate }) {
+function HomeScreen({ onNavigate, usuario }) {
   const [chamados, setChamados] = useState([]);
   const [carregando, setCarregando] = useState(true);
 
   const buscarRequisicoes = async () => {
     try {
       setCarregando(true);
-
       const resposta = await fetch(`${API_URL}/requisicoes`);
 
       if (resposta.ok) {
-        const dados = await resposta.json();
+        const texto = await resposta.text();
+        const dados = texto ? JSON.parse(texto) : [];
 
-        console.log("Requisições recebidas:", dados);
+        let listaTratada = [];
+        if (Array.isArray(dados)) {
+          listaTratada = dados;
+        } else if (dados && Array.isArray(dados.content)) {
+          listaTratada = dados.content;
+        } else if (dados && dados._embedded) {
+          const chaves = Object.keys(dados._embedded);
+          if (chaves.length > 0 && Array.isArray(dados._embedded[chaves[0]])) {
+            listaTratada = dados._embedded[chaves[0]];
+          }
+        }
 
-        setChamados(Array.isArray(dados) ? dados : []);
+        // Ordena as solicitações: mais recentes primeiro (por data e desempate por ID)
+        const listaOrdenada = [...listaTratada].sort((a, b) => {
+          const timeA = obterTimestampData(a.data);
+          const timeB = obterTimestampData(b.data);
+
+          if (timeB !== timeA) {
+            return timeB - timeA;
+          }
+
+          // Se tiverem a mesma data, o maior ID (criado mais recentemente) fica no topo
+          const idA = Number(a.id) || 0;
+          const idB = Number(b.id) || 0;
+          return idB - idA;
+        });
+
+        console.log("Requisições extraídas e ordenadas:", listaOrdenada.length);
+        setChamados(listaOrdenada);
       } else {
         console.error("A API retornou um erro:", resposta.status);
-
-        Alert.alert("Erro", "Não foi possível carregar as requisições.");
+        Alert.alert("Erro", "Não foi possível carregar as solicitações.");
       }
     } catch (erro) {
-      console.error("Erro ao conectar com o back-end:", erro);
-
-      Alert.alert("Erro de conexão", "Não foi possível carregar as requisições.");
+      console.error("Erro ao conectar com o backend:", erro);
+      Alert.alert("Erro de conexão", "Não foi possível carregar as solicitações.");
     } finally {
       setCarregando(false);
     }
@@ -453,8 +617,34 @@ function HomeScreen({ onNavigate }) {
     buscarRequisicoes();
   }, []);
 
-  const suasRequisicoes = [];
-  const requisicoesRecentes = chamados;
+  const getStatusStyle = (status) => {
+    const statusLimpo = typeof status === 'string' ? status.toUpperCase() : "NOVO";
+    switch (statusLimpo) {
+      case "AGUARDO":
+      case "PENDENTE":
+        return {
+          container: styles.badgePendente,
+          text: styles.badgeTextPendente,
+        };
+      case "CONCLUIDO":
+      case "RESOLVIDO":
+        return {
+          container: styles.badgeResolvido,
+          text: styles.badgeTextResolvido,
+        };
+      case "NEGADA":
+      case "RECUSADO":
+        return {
+          container: styles.badgeNegada,
+          text: styles.badgeTextNegada,
+        };
+      default:
+        return {
+          container: styles.badgeNovo,
+          text: styles.badgeTextNovo,
+        };
+    }
+  };
 
   return (
     <View style={styles.homeContainer}>
@@ -480,7 +670,9 @@ function HomeScreen({ onNavigate }) {
 
       <ScrollView contentContainerStyle={styles.homeScroll}>
         <View style={styles.welcomeRow}>
-          <Text style={styles.welcomeText}>Pedidos de Requisição</Text>
+          <Text style={styles.welcomeText}>
+            Pedidos de Solicitação
+          </Text>
 
           <TouchableOpacity
             style={styles.newButton}
@@ -490,27 +682,71 @@ function HomeScreen({ onNavigate }) {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.columnsRow}>
-          <ColunaRequisicoes
-            titulo="Suas requisições"
-            itens={suasRequisicoes}
-            carregando={false}
-            vazioTexto="Você ainda não criou nenhuma requisição."
-          />
+        {carregando ? (
+          <ActivityIndicator size="large" color="#3F6FE5" style={{ marginTop: 50 }} />
+        ) : chamados.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="document-text-outline" size={40} color="#9AA0A6" />
+            <Text style={styles.emptyTitle}>Nenhuma solicitação</Text>
+            <Text style={styles.emptyText}>
+              Você ainda não possui solicitações cadastradas.
+            </Text>
+          </View>
+        ) : (
+          chamados.map((item, index) => {
+            const tipoStr = typeof item.tipo === 'object' ? (item.tipo?.nome || item.tipo?.descricao || "Solicitação") : String(item.tipo || "Equipamento");
+            const localStr = typeof item.local === 'object' ? (item.local?.nome || item.local?.descricao || `ID: ${item.local?.id}`) : (Array.isArray(item.locais) && item.locais.length > 0 ? (item.locais[0]?.nome || `Lab 0${item.locais[0]?.id}`) : item.local);
+            const statusStr = typeof item.status === 'object' ? (item.status?.nome || item.status?.descricao) : String(item.status || "NOVO");
 
-          <ColunaRequisicoes
-            titulo="Requisições recentes"
-            itens={requisicoesRecentes}
-            carregando={carregando}
-            vazioTexto="Nenhuma requisição recente."
-          />
-        </View>
+            const statusStyle = getStatusStyle(statusStr);
+
+            return (
+              <View key={item.id ?? index} style={styles.chamadoCard}>
+                <View style={styles.cardHeader}>
+                  <Text style={styles.chamadoCategory}>
+                    {tipoStr.replace(/_/g, " ")}
+                  </Text>
+
+                  <View style={[styles.badge, statusStyle.container]}>
+                    <Text style={[styles.badgeText, statusStyle.text]}>
+                      {statusStr}
+                    </Text>
+                  </View>
+                </View>
+
+                <Text style={styles.chamadoTitle}>{tipoStr.replace(/_/g, " ")}</Text>
+
+                <Text style={styles.infoValue}>
+                  {item.descricao || "Sem descrição"}
+                </Text>
+
+                {localStr ? (
+                  <Text style={[styles.chamadoDate, { marginTop: 6 }]}>
+                    Local: {localStr}
+                  </Text>
+                ) : null}
+
+                <View style={[styles.cardFooter, { marginTop: 10 }]}>
+                  <Text style={styles.chamadoDate}>
+                    {item.data
+                      ? `Data: ${formatarData(item.data)}`
+                      : "Data não informada"}
+                  </Text>
+                </View>
+              </View>
+            );
+          })
+        )}
       </ScrollView>
     </View>
   );
 }
 
-function UsuarioScreen({ onNavigate }) {
+// =====================================================
+// TELA DE PERFIL
+// =====================================================
+
+function UsuarioScreen({ onNavigate, usuario }) {
   return (
     <View style={styles.homeContainer}>
       <View style={styles.innerHeader}>
@@ -529,12 +765,16 @@ function UsuarioScreen({ onNavigate }) {
       <ScrollView contentContainerStyle={styles.profileScroll}>
         <View style={styles.profileCard}>
           <View style={styles.profileAvatar}>
-            <Ionicons name="person" size={45} color="#3F6FE5" />
+            <Ionicons name="person-outline" size={48} color="#3F6FE5" />
           </View>
 
-          <Text style={styles.profileName}>João da Silva</Text>
+          <Text style={styles.profileName}>
+            {usuario?.nome || "Usuário SISOL"}
+          </Text>
 
-          <Text style={styles.profileSubtitle}>Usuário do sistema</Text>
+          <Text style={styles.profileSubtitle}>
+            Informações da conta
+          </Text>
 
           <View style={styles.profileDivider} />
 
@@ -545,8 +785,9 @@ function UsuarioScreen({ onNavigate }) {
 
             <View style={styles.infoContent}>
               <Text style={styles.infoLabel}>Nome</Text>
-
-              <Text style={styles.infoValue}>João da Silva</Text>
+              <Text style={styles.infoValue}>
+                {usuario?.nome || "Não informado"}
+              </Text>
             </View>
           </View>
 
@@ -557,32 +798,9 @@ function UsuarioScreen({ onNavigate }) {
 
             <View style={styles.infoContent}>
               <Text style={styles.infoLabel}>Matrícula</Text>
-
-              <Text style={styles.infoValue}>2026123456</Text>
-            </View>
-          </View>
-
-          <View style={styles.infoRow}>
-            <View style={styles.infoIcon}>
-              <Ionicons name="mail-outline" size={20} color="#3F6FE5" />
-            </View>
-
-            <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>E-mail</Text>
-
-              <Text style={styles.infoValue}>joao.silva@email.com</Text>
-            </View>
-          </View>
-
-          <View style={styles.infoRow}>
-            <View style={styles.infoIcon}>
-              <Ionicons name="school-outline" size={20} color="#3F6FE5" />
-            </View>
-
-            <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>Setor</Text>
-
-              <Text style={styles.infoValue}>Tecnologia da Informação</Text>
+              <Text style={styles.infoValue}>
+                {usuario?.matricula || "Não informada"}
+              </Text>
             </View>
           </View>
 
@@ -596,8 +814,9 @@ function UsuarioScreen({ onNavigate }) {
             }
           >
             <Ionicons name="create-outline" size={18} color="#3F6FE5" />
-
-            <Text style={styles.secondaryButtonText}>Editar informações</Text>
+            <Text style={styles.secondaryButtonText}>
+              Editar informações
+            </Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -605,32 +824,107 @@ function UsuarioScreen({ onNavigate }) {
   );
 }
 
-function NovaRequisicaoScreen({ onNavigate }) {
-  const [tipo, setTipo] = useState("");
-  const [titulo, setTitulo] = useState("");
+// =====================================================
+// TELA DE NOVA SOLICITAÇÃO
+// =====================================================
+
+function NovaRequisicaoScreen({ onNavigate, usuario }) {
+  const [equipamento, setEquipamento] = useState("");
   const [descricao, setDescricao] = useState("");
   const [local, setLocal] = useState("");
+  const [carregando, setCarregando] = useState(false);
 
-  const tipos = [
-    { nome: "Suporte", icone: "headset-outline" },
-    { nome: "Manutenção", icone: "construct-outline" },
-    { nome: "Infraestrutura", icone: "business-outline" },
-    { nome: "Rede", icone: "wifi-outline" },
-    { nome: "Outro", icone: "ellipsis-horizontal-circle-outline" },
+  const tiposRequisicao = [
+    { label: "Instalação de equipamento", value: "INSTALACAO_EQUIPAMENTO" },
+    { label: "Configuração de VPN", value: "CONFIGURACAO_VPN" },
+    { label: "Configuração de Wi-Fi", value: "CONFIGURACAO_WIFI" },
+    { label: "Instalação de software padrão", value: "INSTALACAO_SOFTWARE_PADRAO" },
+    { label: "Substituição de equipamento", value: "SUBSTITUICAO_EQUIPAMENTO" },
+    { label: "Manutenção de cabos", value: "MANUTENCAO_CABOS" },
+    { label: "Manutenção de projetor", value: "MANUTENCAO_PROJETOR" },
+    { label: "Queda de internet", value: "QUEDA_INTERNET" },
+    { label: "Manutenção de computador", value: "MANUTENCAO_COMPUTADOR" },
+    { label: "Instalação de software específico", value: "INSTALACAO_SOFTWARE_ESPECIFICO" },
   ];
 
-  const enviarRequisicao = () => {
-    if (!tipo || !titulo.trim() || !descricao.trim()) {
-      Alert.alert("Atenção", "Preencha o tipo, título e descrição.");
+  const locaisRequisicao = [
+    { label: "Lab 01", value: "1" },
+    { label: "Lab 02", value: "2" },
+    { label: "Lab 03", value: "3" },
+    { label: "Lab 04", value: "4" },
+    { label: "Lab 05", value: "5" },
+    { label: "Lab 06", value: "6" },
+    { label: "Lab 07", value: "7" },
+    { label: "Lab 08", value: "8" },
+  ];
+
+  const enviarRequisicao = async () => {
+    if (!equipamento || !descricao.trim() || !local) {
+      Alert.alert("Atenção", "Selecione o tipo, o laboratório e preencha a descrição.");
       return;
     }
 
-    Alert.alert("Sucesso", "Requisição criada com sucesso!", [
-      {
-        text: "OK",
-        onPress: () => onNavigate("home"),
-      },
-    ]);
+    if (!usuario?.id && !usuario?.matricula) {
+      Alert.alert("Sessão inválida", "Faça login novamente.");
+      return;
+    }
+
+    setCarregando(true);
+
+    try {
+      const corpo = {
+        tipo: equipamento,
+        descricao: descricao.trim(),
+        data: obterDataHojeLocal(), // Envia a data local exata (YYYY-MM-DD) sem erro de fuso horário
+        status: "AGUARDO",
+        locais: [{ id: Number(local) }],
+        local: { id: Number(local) },
+        sala: { id: Number(local) },
+        usuario: { id: Number(usuario.id) || Number(usuario.matricula) },
+      };
+
+      const url = `${API_URL}/requisicoes/criar`;
+      console.log("Enviando POST para:", url, corpo);
+
+      const resposta = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+        },
+        body: JSON.stringify(corpo),
+      });
+
+      const texto = await resposta.text();
+
+      if (!resposta.ok) {
+        Alert.alert(
+          `Erro HTTP ${resposta.status}`,
+          texto || "O servidor não conseguiu salvar a solicitação."
+        );
+        return;
+      }
+
+      Alert.alert("Solicitação enviada!", "Sua solicitação foi salva com sucesso.", [
+        {
+          text: "OK",
+          onPress: () => {
+            setEquipamento("");
+            setDescricao("");
+            setLocal("");
+            onNavigate("home");
+          },
+        },
+      ]);
+    } catch (erro) {
+      console.error("Erro ao enviar:", erro);
+      Alert.alert(
+        "Erro de conexão",
+        "Confira o endereço da API e certifique-se que o backend está online."
+      );
+    } finally {
+      setCarregando(false);
+    }
   };
 
   return (
@@ -643,7 +937,7 @@ function NovaRequisicaoScreen({ onNavigate }) {
           <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
         </TouchableOpacity>
 
-        <Text style={styles.innerHeaderTitle}>Nova Requisição</Text>
+        <Text style={styles.innerHeaderTitle}>Nova Solicitação</Text>
 
         <View style={styles.headerSpacer} />
       </View>
@@ -653,60 +947,50 @@ function NovaRequisicaoScreen({ onNavigate }) {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.formCard}>
-          <Text style={styles.formTitle}>Criar nova requisição</Text>
+          <Text style={styles.formTitle}>Criar nova solicitação</Text>
 
           <Text style={styles.formSubtitle}>
-            Preencha as informações abaixo.
+            Selecione o equipamento e descreva o que está acontecendo.
           </Text>
 
-          <Text style={styles.label}>Tipo de requisição</Text>
+          <Dropdown
+            label="Equipamento ou item"
+            value={equipamento}
+            onValueChange={setEquipamento}
+            options={tiposRequisicao}
+            placeholder="Selecione o tipo de solicitação"
+          />
 
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={tipo}
-              onValueChange={(itemValue) => setTipo(itemValue)}
-              style={styles.picker}
-              dropdownIconColor="#40454D"
-            >
-              <Picker.Item label="Selecione um tipo..." value="" color="#9AA0A6" />
-              {tipos.map((item) => (
-                <Picker.Item key={item.nome} label={item.nome} value={item.nome} color="#292D32" />
-              ))}
-            </Picker>
-          </View>
-
-          <Campo
-            label="Título"
-            value={titulo}
-            onChangeText={setTitulo}
-            placeholder="Ex.: Computador não liga"
-            icon="text-outline"
+          <Dropdown
+            label="Local"
+            value={local}
+            onValueChange={setLocal}
+            options={locaisRequisicao}
+            placeholder="Selecione o laboratório"
           />
 
           <Campo
-            label="Descrição"
+            label="Descrição do problema"
             value={descricao}
             onChangeText={setDescricao}
-            placeholder="Descreva o problema ou requisição"
+            placeholder="Ex.: O monitor não liga ou o cabo está danificado"
             icon="document-text-outline"
             multiline
           />
 
-          <Campo
-            label="Local"
-            value={local}
-            onChangeText={setLocal}
-            placeholder="Ex.: Laboratório 02"
-            icon="location-outline"
-          />
-
           <TouchableOpacity
-            style={styles.primaryButton}
+            style={[styles.primaryButton, carregando && { opacity: 0.7 }]}
             onPress={enviarRequisicao}
+            disabled={carregando}
           >
-            <Ionicons name="send-outline" size={18} color="#FFFFFF" />
-
-            <Text style={styles.primaryButtonText}>Enviar requisição</Text>
+            {carregando ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <>
+                <Ionicons name="send-outline" size={18} color="#FFFFFF" />
+                <Text style={styles.primaryButtonText}>Enviar solicitação</Text>
+              </>
+            )}
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -714,8 +998,23 @@ function NovaRequisicaoScreen({ onNavigate }) {
   );
 }
 
+// =====================================================
+// COMPONENTE PRINCIPAL
+// =====================================================
+
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState("login");
+  const [usuarioLogado, setUsuarioLogado] = useState(null);
+
+  const handleLogin = (usuario) => {
+    setUsuarioLogado(usuario);
+    setCurrentScreen("home");
+  };
+
+  const handleNavigate = (tela) => {
+    if (tela === "login") setUsuarioLogado(null); // Logout
+    setCurrentScreen(tela);
+  };
 
   return (
     <KeyboardAvoidingView
@@ -723,40 +1022,41 @@ export default function App() {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       {currentScreen === "login" && (
-        <LoginScreen onNavigate={setCurrentScreen} />
+        <LoginScreen onNavigate={handleNavigate} onLogin={handleLogin} />
       )}
-
       {currentScreen === "cadastro" && (
-        <CadastroScreen onNavigate={setCurrentScreen} />
+        <CadastroScreen onNavigate={handleNavigate} />
       )}
-
       {currentScreen === "home" && (
-        <HomeScreen onNavigate={setCurrentScreen} />
+        <HomeScreen onNavigate={handleNavigate} usuario={usuarioLogado} />
       )}
-
       {currentScreen === "usuario" && (
-        <UsuarioScreen onNavigate={setCurrentScreen} />
+        <UsuarioScreen onNavigate={handleNavigate} usuario={usuarioLogado} />
       )}
-
       {currentScreen === "novaRequisicao" && (
-        <NovaRequisicaoScreen onNavigate={setCurrentScreen} />
+        <NovaRequisicaoScreen
+          onNavigate={handleNavigate}
+          usuario={usuarioLogado}
+        />
       )}
     </KeyboardAvoidingView>
   );
 }
+
+// =====================================================
+// ESTILOS
+// =====================================================
 
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: "#F7F9FC",
   },
-
   scroll: {
     flexGrow: 1,
     justifyContent: "center",
     padding: 20,
   },
-
   card: {
     width: "100%",
     maxWidth: 400,
@@ -765,15 +1065,11 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 24,
     shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 5,
-    },
+    shadowOffset: { width: 0, height: 5 },
     shadowOpacity: 0.08,
     shadowRadius: 15,
     elevation: 5,
   },
-
   appIcon: {
     width: 50,
     height: 50,
@@ -784,14 +1080,12 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     marginBottom: 16,
   },
-
   title: {
     textAlign: "center",
     color: "#202124",
     fontSize: 24,
     fontWeight: "700",
   },
-
   subtitle: {
     textAlign: "center",
     color: "#777E87",
@@ -799,18 +1093,15 @@ const styles = StyleSheet.create({
     marginTop: 4,
     marginBottom: 24,
   },
-
   fieldContainer: {
     marginBottom: 14,
   },
-
   label: {
     color: "#40454D",
     fontSize: 12,
     fontWeight: "600",
     marginBottom: 6,
   },
-
   inputContainer: {
     height: 46,
     borderWidth: 1,
@@ -820,24 +1111,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#FFFFFF",
   },
-
   inputContainerMultiline: {
     height: 110,
     alignItems: "flex-start",
     paddingTop: 12,
   },
-
   inputIcon: {
     marginLeft: 12,
     marginRight: 8,
   },
-
   inputIconTop: {
     marginLeft: 12,
     marginRight: 8,
     marginTop: 2,
   },
-
   input: {
     flex: 1,
     height: "100%",
@@ -845,65 +1132,54 @@ const styles = StyleSheet.create({
     fontSize: 13,
     paddingRight: 12,
   },
-
   inputMultiline: {
     paddingTop: 0,
     paddingBottom: 10,
   },
-
   forgotButton: {
     alignSelf: "flex-end",
     marginTop: 4,
     marginBottom: 16,
   },
-
   forgotText: {
     color: "#3769D4",
     fontSize: 11,
     fontWeight: "500",
   },
-
   primaryButton: {
-    height: 46,
+    minHeight: 46,
     backgroundColor: "#3F6FE5",
     borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "row",
     marginTop: 4,
+    paddingHorizontal: 12,
     shadowColor: "#3F6FE5",
-    shadowOffset: {
-      width: 0,
-      height: 3,
-    },
+    shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.2,
     shadowRadius: 5,
     elevation: 3,
   },
-
   primaryButtonText: {
     color: "#FFFFFF",
     fontSize: 14,
     fontWeight: "600",
     marginLeft: 8,
   },
-
   bottomText: {
     textAlign: "center",
     color: "#7B8189",
     fontSize: 12,
     marginTop: 20,
   },
-
   link: {
     color: "#3266D5",
     fontWeight: "600",
   },
-
   turmaContainer: {
     marginBottom: 18,
   },
-
   turmaButton: {
     height: 44,
     backgroundColor: "#E8ECF4",
@@ -912,26 +1188,21 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 8,
   },
-
   turmaButtonSelected: {
     backgroundColor: "#3F6FE5",
   },
-
   turmaButtonText: {
     color: "#40454D",
     fontSize: 13,
     fontWeight: "600",
   },
-
   turmaButtonTextSelected: {
     color: "#FFFFFF",
   },
-
   homeContainer: {
     flex: 1,
     backgroundColor: "#F7F9FC",
   },
-
   headerBar: {
     height: 64,
     backgroundColor: "#3F6FE5",
@@ -942,49 +1213,41 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     elevation: 4,
   },
-
   headerTitle: {
     color: "#FFFFFF",
     fontSize: 18,
     fontWeight: "bold",
     letterSpacing: 1.2,
   },
-
   headerActions: {
     flexDirection: "row",
     alignItems: "center",
   },
-
   headerButton: {
     padding: 6,
     marginRight: 4,
   },
-
   logoutButton: {
     padding: 6,
   },
-
   homeScroll: {
     padding: 20,
     maxWidth: 600,
     width: "100%",
     alignSelf: "center",
   },
-
   welcomeRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 16,
   },
-
   welcomeText: {
     fontSize: 16,
     fontWeight: "700",
     color: "#202124",
     flex: 1,
   },
-
   newButton: {
     backgroundColor: "#3F6FE5",
     paddingHorizontal: 12,
@@ -992,46 +1255,11 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     marginLeft: 10,
   },
-
   newButtonText: {
     color: "#FFFFFF",
     fontSize: 12,
     fontWeight: "600",
   },
-
-  columnsRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-  },
-
-  column: {
-    flex: 1,
-    marginHorizontal: 4,
-  },
-
-  columnTitle: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#40454D",
-    marginBottom: 10,
-  },
-
-  columnEmpty: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#E0E3E8",
-    padding: 16,
-    alignItems: "center",
-  },
-
-  columnEmptyText: {
-    color: "#9AA0A6",
-    fontSize: 11,
-    textAlign: "center",
-    marginTop: 8,
-  },
-
   chamadoCard: {
     backgroundColor: "#FFFFFF",
     borderRadius: 12,
@@ -1040,22 +1268,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E0E3E8",
     shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
     shadowRadius: 6,
     elevation: 2,
   },
-
   cardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 8,
   },
-
   chamadoCategory: {
     fontSize: 11,
     fontWeight: "600",
@@ -1063,57 +1286,45 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     flex: 1,
   },
-
   badge: {
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 4,
   },
-
   badgePendente: {
     backgroundColor: "#FEF3C7",
   },
-
   badgeResolvido: {
     backgroundColor: "#D1FAE5",
   },
-
   badgeNegada: {
     backgroundColor: "#FEE2E2",
   },
-
   badgeNovo: {
     backgroundColor: "#DBEAFE",
   },
-
   badgeText: {
     fontSize: 10,
     fontWeight: "600",
   },
-
   badgeTextPendente: {
     color: "#92400E",
   },
-
   badgeTextResolvido: {
     color: "#065F46",
   },
-
   badgeTextNegada: {
     color: "#991B1B",
   },
-
   badgeTextNovo: {
     color: "#1E40AF",
   },
-
   chamadoTitle: {
     fontSize: 14,
     fontWeight: "600",
     color: "#202124",
     marginBottom: 12,
   },
-
   cardFooter: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -1122,12 +1333,31 @@ const styles = StyleSheet.create({
     borderTopColor: "#F0F2F5",
     paddingTop: 10,
   },
-
   chamadoDate: {
     fontSize: 11,
     color: "#9AA0A6",
   },
-
+  emptyContainer: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E0E3E8",
+    padding: 35,
+    alignItems: "center",
+    marginTop: 20,
+  },
+  emptyTitle: {
+    color: "#40454D",
+    fontSize: 16,
+    fontWeight: "700",
+    marginTop: 12,
+  },
+  emptyText: {
+    color: "#9AA0A6",
+    fontSize: 12,
+    textAlign: "center",
+    marginTop: 5,
+  },
   innerHeader: {
     height: 64,
     backgroundColor: "#3F6FE5",
@@ -1138,29 +1368,24 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     elevation: 4,
   },
-
   innerHeaderTitle: {
     color: "#FFFFFF",
     fontSize: 18,
     fontWeight: "bold",
   },
-
   backButton: {
     padding: 5,
     width: 40,
   },
-
   headerSpacer: {
     width: 40,
   },
-
   profileScroll: {
     padding: 20,
     maxWidth: 600,
     width: "100%",
     alignSelf: "center",
   },
-
   profileCard: {
     backgroundColor: "#FFFFFF",
     borderRadius: 16,
@@ -1168,15 +1393,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E0E3E8",
     shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
     shadowRadius: 6,
     elevation: 2,
   },
-
   profileAvatar: {
     width: 90,
     height: 90,
@@ -1187,33 +1408,28 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 14,
   },
-
   profileName: {
     textAlign: "center",
     fontSize: 21,
     fontWeight: "700",
     color: "#202124",
   },
-
   profileSubtitle: {
     textAlign: "center",
     fontSize: 12,
     color: "#777E87",
     marginTop: 4,
   },
-
   profileDivider: {
     height: 1,
     backgroundColor: "#F0F2F5",
     marginVertical: 22,
   },
-
   infoRow: {
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 18,
   },
-
   infoIcon: {
     width: 38,
     height: 38,
@@ -1223,23 +1439,19 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginRight: 12,
   },
-
   infoContent: {
     flex: 1,
   },
-
   infoLabel: {
     fontSize: 11,
     color: "#9AA0A6",
     marginBottom: 3,
   },
-
   infoValue: {
     fontSize: 14,
     fontWeight: "600",
     color: "#292D32",
   },
-
   secondaryButton: {
     height: 46,
     borderWidth: 1,
@@ -1250,21 +1462,18 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginTop: 8,
   },
-
   secondaryButtonText: {
     color: "#3F6FE5",
     fontSize: 14,
     fontWeight: "600",
     marginLeft: 8,
   },
-
   newRequestScroll: {
     padding: 20,
     maxWidth: 600,
     width: "100%",
     alignSelf: "center",
   },
-
   formCard: {
     backgroundColor: "#FFFFFF",
     borderRadius: 16,
@@ -1272,40 +1481,89 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E0E3E8",
     shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
     shadowRadius: 6,
     elevation: 2,
   },
-
   formTitle: {
     fontSize: 19,
     fontWeight: "700",
     color: "#202124",
   },
-
   formSubtitle: {
     fontSize: 12,
     color: "#777E87",
     marginTop: 4,
     marginBottom: 22,
   },
-
-  pickerContainer: {
-    height: 46,
+  dropdownWrapper: {
+    marginBottom: 14,
+    width: "100%",
+    position: "relative",
+    zIndex: 10,
+  },
+  dropdownWrapperOpen: {
+    zIndex: 100,
+    elevation: 10,
+  },
+  dropdownButton: {
+    minHeight: 46,
     borderWidth: 1,
     borderColor: "#E0E3E8",
     borderRadius: 8,
     backgroundColor: "#FFFFFF",
-    marginBottom: 14,
-    justifyContent: "center",
+    paddingHorizontal: 13,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
-
-  picker: {
-    height: "100%",
-    width: "100%",
+  dropdownButtonOpen: {
+    borderColor: "#3F6FE5",
+  },
+  dropdownText: {
+    flex: 1,
+    color: "#292D32",
+    fontSize: 13,
+    marginRight: 10,
+  },
+  dropdownPlaceholder: {
+    color: "#9AA0A6",
+  },
+  dropdownOptions: {
+    marginTop: 5,
+    borderWidth: 1,
+    borderColor: "#E0E3E8",
+    borderRadius: 8,
+    backgroundColor: "#FFFFFF",
+    overflow: "hidden",
+    elevation: 8,
+    zIndex: 1000,
+  },
+  dropdownList: {
+    maxHeight: 210,
+  },
+  dropdownOption: {
+    minHeight: 43,
+    paddingHorizontal: 13,
+    paddingVertical: 11,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderBottomWidth: 1,
+    borderBottomColor: "#F0F2F5",
+  },
+  dropdownOptionSelected: {
+    backgroundColor: "#EEF3FF",
+  },
+  dropdownOptionText: {
+    flex: 1,
+    fontSize: 13,
+    color: "#40454D",
+    marginRight: 8,
+  },
+  dropdownOptionTextSelected: {
+    color: "#3F6FE5",
+    fontWeight: "600",
   },
 });
