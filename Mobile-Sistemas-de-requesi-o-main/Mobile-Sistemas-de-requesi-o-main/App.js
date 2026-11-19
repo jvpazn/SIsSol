@@ -13,45 +13,70 @@ import {
   View,
 } from "react-native";
 
-// DICA: Se estiver testando no emulador Android e o backend estiver na mesma máquina, 
-// o IP correto geralmente é http://10.0.2.2:8080/api em vez do IP da rede local.
-const API_URL = "http://10.31.37.12:8080/api";
+// No navegador (Web), usa localhost automaticamente para evitar erros de IP da rede local.
+// No celular físico (Android/iOS), troque o IP abaixo pelo IPv4 atual do seu PC (use 'ipconfig' no CMD).
+const API_URL =
+  Platform.OS === "web"
+    ? "http://localhost:8080/api"
+    : "http://10.31.37.12:8080/api";
 
 // =====================================================
 // FUNÇÕES AUXILIARES DE DATA
 // =====================================================
 
 /**
- * Converte a data recebida do backend (String ISO, Array do Java [ano, mes, dia] ou timestamp)
- * em um valor numérico em milissegundos para permitir ordenação precisa.
+ * Extrai { ano, mes (1-12), dia } sem deslocamento de fuso horário UTC.
  */
-function obterTimestampData(dataValor) {
-  if (!dataValor) return 0;
+function extrairPartesData(dataValor) {
+  if (!dataValor) return null;
 
-  // Caso o Spring Boot serialize LocalDate como array [2026, 11, 19]
   if (Array.isArray(dataValor) && dataValor.length >= 3) {
-    const [ano, mes, dia, hora = 0, min = 0, seg = 0] = dataValor;
-    return new Date(ano, mes - 1, dia, hora, min, seg).getTime();
+    return {
+      ano: Number(dataValor[0]),
+      mes: Number(dataValor[1]),
+      dia: Number(dataValor[2]),
+    };
   }
 
-  // Caso seja uma string no formato "YYYY-MM-DD" (evita bug de fuso horário UTC)
   if (typeof dataValor === "string") {
-    const apenasData = dataValor.split("T")[0];
+    const apenasData = dataValor.trim().split("T")[0].split(" ")[0];
     const partes = apenasData.split("-");
     if (partes.length === 3 && partes[0].length === 4) {
-      const ano = Number(partes[0]);
-      const mes = Number(partes[1]) - 1;
-      const dia = Number(partes[2]);
-      
-      // Se houver horário junto na string ISO
-      if (dataValor.includes("T")) {
-        const dt = new Date(dataValor);
-        if (!isNaN(dt.getTime())) return dt.getTime();
-      }
-      return new Date(ano, mes, dia).getTime();
+      return {
+        ano: Number(partes[0]),
+        mes: Number(partes[1]),
+        dia: Number(partes[2]),
+      };
     }
   }
 
+  const dataObj = new Date(dataValor);
+  if (!isNaN(dataObj.getTime())) {
+    // Se for meia-noite UTC (ex: 2026-11-19T00:00:00.000Z), usa UTC para não voltar 1 dia no -03:00
+    const isMeiaNoiteUtc =
+      typeof dataValor === "string" &&
+      (dataValor.endsWith("Z") || dataValor.includes("+00:00")) &&
+      dataObj.getUTCHours() === 0 &&
+      dataObj.getUTCMinutes() === 0;
+
+    return {
+      ano: isMeiaNoiteUtc ? dataObj.getUTCFullYear() : dataObj.getFullYear(),
+      mes: (isMeiaNoiteUtc ? dataObj.getUTCMonth() : dataObj.getMonth()) + 1,
+      dia: isMeiaNoiteUtc ? dataObj.getUTCDate() : dataObj.getDate(),
+    };
+  }
+
+  return null;
+}
+
+/**
+ * Converte a data recebida do backend em timestamp local em milissegundos para ordenação.
+ */
+function obterTimestampData(dataValor) {
+  const partes = extrairPartesData(dataValor);
+  if (partes) {
+    return new Date(partes.ano, partes.mes - 1, partes.dia).getTime();
+  }
   const parsed = new Date(dataValor).getTime();
   return isNaN(parsed) ? 0 : parsed;
 }
@@ -61,28 +86,10 @@ function obterTimestampData(dataValor) {
  */
 function formatarData(dataValor) {
   if (!dataValor) return "Data não informada";
-
-  if (Array.isArray(dataValor) && dataValor.length >= 3) {
-    const [ano, mes, dia] = dataValor;
-    return `${String(dia).padStart(2, "0")}/${String(mes).padStart(2, "0")}/${ano}`;
+  const partes = extrairPartesData(dataValor);
+  if (partes) {
+    return `${String(partes.dia).padStart(2, "0")}/${String(partes.mes).padStart(2, "0")}/${partes.ano}`;
   }
-
-  if (typeof dataValor === "string") {
-    const apenasData = dataValor.split("T")[0];
-    const partes = apenasData.split("-");
-    if (partes.length === 3 && partes[0].length === 4) {
-      return `${partes[2].padStart(2, "0")}/${partes[1].padStart(2, "0")}/${partes[0]}`;
-    }
-  }
-
-  const dataObj = new Date(dataValor);
-  if (!isNaN(dataObj.getTime())) {
-    const dia = String(dataObj.getDate()).padStart(2, "0");
-    const mes = String(dataObj.getMonth() + 1).padStart(2, "0");
-    const ano = dataObj.getFullYear();
-    return `${dia}/${mes}/${ano}`;
-  }
-
   return String(dataValor);
 }
 
@@ -137,10 +144,7 @@ function Campo({
         />
 
         <TextInput
-          style={[
-            styles.input,
-            multiline && styles.inputMultiline,
-          ]}
+          style={[styles.input, multiline && styles.inputMultiline]}
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
@@ -155,35 +159,19 @@ function Campo({
   );
 }
 
-function Dropdown({
-  label,
-  value,
-  onValueChange,
-  options,
-  placeholder,
-}) {
+function Dropdown({ label, value, onValueChange, options, placeholder }) {
   const [aberto, setAberto] = useState(false);
 
-  const selecionado = options.find(
-    (item) => item.value === value
-  );
+  const selecionado = options.find((item) => item.value === value);
 
   return (
     <View
-      style={[
-        styles.dropdownWrapper,
-        aberto && styles.dropdownWrapperOpen,
-      ]}
+      style={[styles.dropdownWrapper, aberto && styles.dropdownWrapperOpen]}
     >
-      {label ? (
-        <Text style={styles.label}>{label}</Text>
-      ) : null}
+      {label ? <Text style={styles.label}>{label}</Text> : null}
 
       <TouchableOpacity
-        style={[
-          styles.dropdownButton,
-          aberto && styles.dropdownButtonOpen,
-        ]}
+        style={[styles.dropdownButton, aberto && styles.dropdownButtonOpen]}
         onPress={() => setAberto((estado) => !estado)}
         activeOpacity={0.8}
       >
@@ -230,19 +218,14 @@ function Dropdown({
                   <Text
                     style={[
                       styles.dropdownOptionText,
-                      ativo &&
-                        styles.dropdownOptionTextSelected,
+                      ativo && styles.dropdownOptionTextSelected,
                     ]}
                   >
                     {item.label}
                   </Text>
 
                   {ativo && (
-                    <Ionicons
-                      name="checkmark"
-                      size={18}
-                      color="#3F6FE5"
-                    />
+                    <Ionicons name="checkmark" size={18} color="#3F6FE5" />
                   )}
                 </TouchableOpacity>
               );
@@ -276,7 +259,7 @@ function LoginScreen({ onNavigate, onLogin }) {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Accept": "application/json"
+          Accept: "application/json",
         },
         body: JSON.stringify({
           matricula: matricula.trim(),
@@ -298,7 +281,7 @@ function LoginScreen({ onNavigate, onLogin }) {
         if (!usuario || (!usuario.id && !usuario.matricula)) {
           Alert.alert(
             "Erro",
-            "O servidor autenticou, mas não retornou os dados do usuário corretamente."
+            "O servidor autenticou, mas não retornou os dados do usuário corretamente.",
           );
           return;
         }
@@ -311,7 +294,7 @@ function LoginScreen({ onNavigate, onLogin }) {
       console.error("Erro ao conectar com o backend:", erro);
       Alert.alert(
         "Erro de conexão",
-        "Não foi possível conectar ao servidor. Verifique se o backend está rodando e o IP configurado está correto."
+        'Não foi possível conectar ao servidor.\n\n1. Verifique se o Spring Boot está rodando na porta 8080.\n2. Se estiver na Web, verifique se o backend tem @CrossOrigin(origins = "*") configurado.',
       );
     } finally {
       setCarregando(false);
@@ -329,9 +312,7 @@ function LoginScreen({ onNavigate, onLogin }) {
 
           <Text style={styles.title}>Login</Text>
 
-          <Text style={styles.subtitle}>
-            Acesse sua conta do sistema
-          </Text>
+          <Text style={styles.subtitle}>Acesse sua conta do sistema</Text>
 
           <Campo
             label="Matrícula"
@@ -355,13 +336,11 @@ function LoginScreen({ onNavigate, onLogin }) {
             onPress={() =>
               Alert.alert(
                 "Recuperação de senha",
-                "A função de recuperação de senha ainda não foi implementada."
+                "A função de recuperação de senha ainda não foi implementada.",
               )
             }
           >
-            <Text style={styles.forgotText}>
-              Esqueceu sua senha?
-            </Text>
+            <Text style={styles.forgotText}>Esqueceu sua senha?</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -372,18 +351,13 @@ function LoginScreen({ onNavigate, onLogin }) {
             {carregando ? (
               <ActivityIndicator color="#FFFFFF" />
             ) : (
-              <Text style={styles.primaryButtonText}>
-                Entrar
-              </Text>
+              <Text style={styles.primaryButtonText}>Entrar</Text>
             )}
           </TouchableOpacity>
 
           <Text style={styles.bottomText}>
             Não tem uma conta?{" "}
-            <Text
-              style={styles.link}
-              onPress={() => onNavigate("cadastro")}
-            >
+            <Text style={styles.link} onPress={() => onNavigate("cadastro")}>
               Criar conta
             </Text>
           </Text>
@@ -425,14 +399,14 @@ function CadastroScreen({ onNavigate }) {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Accept": "application/json",
+          Accept: "application/json",
         },
         body: JSON.stringify({
           nome: nome.trim(),
           matricula: matricula.trim(),
           senha,
           turmaId: turmaId,
-          turma: { id: turmaId }
+          turma: { id: turmaId },
         }),
       });
 
@@ -445,19 +419,19 @@ function CadastroScreen({ onNavigate }) {
         setSenha("");
         setTurmaId(1);
 
-        Alert.alert("Cadastro realizado", "Sua conta foi criada com sucesso!");
         onNavigate("login");
+        Alert.alert("Cadastro realizado", "Sua conta foi criada com sucesso!");
       } else {
         Alert.alert(
           "Erro no cadastro",
-          resultado || "Não foi possível cadastrar o usuário."
+          resultado || "Não foi possível cadastrar o usuário.",
         );
       }
     } catch (erro) {
       console.error("Erro ao conectar com o backend:", erro);
       Alert.alert(
         "Erro de conexão",
-        "Não foi possível conectar ao servidor. Verifique se o backend está rodando."
+        'Não foi possível conectar ao servidor.\n\n1. Verifique se o Spring Boot está rodando na porta 8080.\n2. Se estiver na Web, verifique se o backend tem @CrossOrigin(origins = "*") configurado.',
       );
     } finally {
       setCarregando(false);
@@ -475,9 +449,7 @@ function CadastroScreen({ onNavigate }) {
 
           <Text style={styles.title}>Cadastro</Text>
 
-          <Text style={styles.subtitle}>
-            Crie sua conta para começar
-          </Text>
+          <Text style={styles.subtitle}>Crie sua conta para começar</Text>
 
           <Campo
             label="Nome"
@@ -542,10 +514,7 @@ function CadastroScreen({ onNavigate }) {
 
           <Text style={styles.bottomText}>
             Já tem uma conta?{" "}
-            <Text
-              style={styles.link}
-              onPress={() => onNavigate("login")}
-            >
+            <Text style={styles.link} onPress={() => onNavigate("login")}>
               Entrar
             </Text>
           </Text>
@@ -584,7 +553,6 @@ function HomeScreen({ onNavigate, usuario }) {
           }
         }
 
-        // Ordena as solicitações: mais recentes primeiro (por data e desempate por ID)
         const listaOrdenada = [...listaTratada].sort((a, b) => {
           const timeA = obterTimestampData(a.data);
           const timeB = obterTimestampData(b.data);
@@ -593,7 +561,6 @@ function HomeScreen({ onNavigate, usuario }) {
             return timeB - timeA;
           }
 
-          // Se tiverem a mesma data, o maior ID (criado mais recentemente) fica no topo
           const idA = Number(a.id) || 0;
           const idB = Number(b.id) || 0;
           return idB - idA;
@@ -607,7 +574,10 @@ function HomeScreen({ onNavigate, usuario }) {
       }
     } catch (erro) {
       console.error("Erro ao conectar com o backend:", erro);
-      Alert.alert("Erro de conexão", "Não foi possível carregar as solicitações.");
+      Alert.alert(
+        "Erro de conexão",
+        "Não foi possível carregar as solicitações.",
+      );
     } finally {
       setCarregando(false);
     }
@@ -618,7 +588,8 @@ function HomeScreen({ onNavigate, usuario }) {
   }, []);
 
   const getStatusStyle = (status) => {
-    const statusLimpo = typeof status === 'string' ? status.toUpperCase() : "NOVO";
+    const statusLimpo =
+      typeof status === "string" ? status.toUpperCase() : "NOVO";
     switch (statusLimpo) {
       case "AGUARDO":
       case "PENDENTE":
@@ -670,9 +641,7 @@ function HomeScreen({ onNavigate, usuario }) {
 
       <ScrollView contentContainerStyle={styles.homeScroll}>
         <View style={styles.welcomeRow}>
-          <Text style={styles.welcomeText}>
-            Pedidos de Solicitação
-          </Text>
+          <Text style={styles.welcomeText}>Pedidos de Solicitação</Text>
 
           <TouchableOpacity
             style={styles.newButton}
@@ -683,7 +652,11 @@ function HomeScreen({ onNavigate, usuario }) {
         </View>
 
         {carregando ? (
-          <ActivityIndicator size="large" color="#3F6FE5" style={{ marginTop: 50 }} />
+          <ActivityIndicator
+            size="large"
+            color="#3F6FE5"
+            style={{ marginTop: 50 }}
+          />
         ) : chamados.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Ionicons name="document-text-outline" size={40} color="#9AA0A6" />
@@ -694,9 +667,22 @@ function HomeScreen({ onNavigate, usuario }) {
           </View>
         ) : (
           chamados.map((item, index) => {
-            const tipoStr = typeof item.tipo === 'object' ? (item.tipo?.nome || item.tipo?.descricao || "Solicitação") : String(item.tipo || "Equipamento");
-            const localStr = typeof item.local === 'object' ? (item.local?.nome || item.local?.descricao || `ID: ${item.local?.id}`) : (Array.isArray(item.locais) && item.locais.length > 0 ? (item.locais[0]?.nome || `Lab 0${item.locais[0]?.id}`) : item.local);
-            const statusStr = typeof item.status === 'object' ? (item.status?.nome || item.status?.descricao) : String(item.status || "NOVO");
+            const tipoStr =
+              typeof item.tipo === "object"
+                ? item.tipo?.nome || item.tipo?.descricao || "Solicitação"
+                : String(item.tipo || "Equipamento");
+            const localStr =
+              typeof item.local === "object"
+                ? item.local?.nome ||
+                  item.local?.descricao ||
+                  `ID: ${item.local?.id}`
+                : Array.isArray(item.locais) && item.locais.length > 0
+                  ? item.locais[0]?.nome || `Lab 0${item.locais[0]?.id}`
+                  : item.local;
+            const statusStr =
+              typeof item.status === "object"
+                ? item.status?.nome || item.status?.descricao
+                : String(item.status || "NOVO");
 
             const statusStyle = getStatusStyle(statusStr);
 
@@ -714,7 +700,9 @@ function HomeScreen({ onNavigate, usuario }) {
                   </View>
                 </View>
 
-                <Text style={styles.chamadoTitle}>{tipoStr.replace(/_/g, " ")}</Text>
+                <Text style={styles.chamadoTitle}>
+                  {tipoStr.replace(/_/g, " ")}
+                </Text>
 
                 <Text style={styles.infoValue}>
                   {item.descricao || "Sem descrição"}
@@ -772,9 +760,7 @@ function UsuarioScreen({ onNavigate, usuario }) {
             {usuario?.nome || "Usuário SISOL"}
           </Text>
 
-          <Text style={styles.profileSubtitle}>
-            Informações da conta
-          </Text>
+          <Text style={styles.profileSubtitle}>Informações da conta</Text>
 
           <View style={styles.profileDivider} />
 
@@ -809,14 +795,12 @@ function UsuarioScreen({ onNavigate, usuario }) {
             onPress={() =>
               Alert.alert(
                 "Editar perfil",
-                "A função de edição de perfil ainda não foi implementada."
+                "A função de edição de perfil ainda não foi implementada.",
               )
             }
           >
             <Ionicons name="create-outline" size={18} color="#3F6FE5" />
-            <Text style={styles.secondaryButtonText}>
-              Editar informações
-            </Text>
+            <Text style={styles.secondaryButtonText}>Editar informações</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -838,13 +822,19 @@ function NovaRequisicaoScreen({ onNavigate, usuario }) {
     { label: "Instalação de equipamento", value: "INSTALACAO_EQUIPAMENTO" },
     { label: "Configuração de VPN", value: "CONFIGURACAO_VPN" },
     { label: "Configuração de Wi-Fi", value: "CONFIGURACAO_WIFI" },
-    { label: "Instalação de software padrão", value: "INSTALACAO_SOFTWARE_PADRAO" },
+    {
+      label: "Instalação de software padrão",
+      value: "INSTALACAO_SOFTWARE_PADRAO",
+    },
     { label: "Substituição de equipamento", value: "SUBSTITUICAO_EQUIPAMENTO" },
     { label: "Manutenção de cabos", value: "MANUTENCAO_CABOS" },
     { label: "Manutenção de projetor", value: "MANUTENCAO_PROJETOR" },
     { label: "Queda de internet", value: "QUEDA_INTERNET" },
     { label: "Manutenção de computador", value: "MANUTENCAO_COMPUTADOR" },
-    { label: "Instalação de software específico", value: "INSTALACAO_SOFTWARE_ESPECIFICO" },
+    {
+      label: "Instalação de software específico",
+      value: "INSTALACAO_SOFTWARE_ESPECIFICO",
+    },
   ];
 
   const locaisRequisicao = [
@@ -860,7 +850,10 @@ function NovaRequisicaoScreen({ onNavigate, usuario }) {
 
   const enviarRequisicao = async () => {
     if (!equipamento || !descricao.trim() || !local) {
-      Alert.alert("Atenção", "Selecione o tipo, o laboratório e preencha a descrição.");
+      Alert.alert(
+        "Atenção",
+        "Selecione o tipo, o laboratório e preencha a descrição.",
+      );
       return;
     }
 
@@ -875,7 +868,7 @@ function NovaRequisicaoScreen({ onNavigate, usuario }) {
       const corpo = {
         tipo: equipamento,
         descricao: descricao.trim(),
-        data: obterDataHojeLocal(), // Envia a data local exata (YYYY-MM-DD) sem erro de fuso horário
+        data: obterDataHojeLocal(),
         status: "AGUARDO",
         locais: [{ id: Number(local) }],
         local: { id: Number(local) },
@@ -890,7 +883,7 @@ function NovaRequisicaoScreen({ onNavigate, usuario }) {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Accept": "application/json",
+          Accept: "application/json",
         },
         body: JSON.stringify(corpo),
       });
@@ -900,27 +893,24 @@ function NovaRequisicaoScreen({ onNavigate, usuario }) {
       if (!resposta.ok) {
         Alert.alert(
           `Erro HTTP ${resposta.status}`,
-          texto || "O servidor não conseguiu salvar a solicitação."
+          texto || "O servidor não conseguiu salvar a solicitação.",
         );
         return;
       }
 
-      Alert.alert("Solicitação enviada!", "Sua solicitação foi salva com sucesso.", [
-        {
-          text: "OK",
-          onPress: () => {
-            setEquipamento("");
-            setDescricao("");
-            setLocal("");
-            onNavigate("home");
-          },
-        },
-      ]);
+      setEquipamento("");
+      setDescricao("");
+      setLocal("");
+      onNavigate("home");
+      Alert.alert(
+        "Solicitação enviada!",
+        "Sua solicitação foi salva com sucesso.",
+      );
     } catch (erro) {
       console.error("Erro ao enviar:", erro);
       Alert.alert(
         "Erro de conexão",
-        "Confira o endereço da API e certifique-se que o backend está online."
+        "Confira o endereço da API e certifique-se que o backend está online.",
       );
     } finally {
       setCarregando(false);
