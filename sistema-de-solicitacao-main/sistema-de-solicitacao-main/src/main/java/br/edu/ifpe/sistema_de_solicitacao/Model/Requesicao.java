@@ -1,14 +1,29 @@
 package br.edu.ifpe.sistema_de_solicitacao.Model;
 
-import java.sql.Date;
+import java.time.LocalDate;
 import java.util.List;
-import jakarta.persistence.*;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 
 enum StatusRequesicao {
     CONCLUIDO,
     AGUARDO,
     NEGADA
 }
+
 enum TipoRequisicao {
     MANUTENCAO_COMPUTADOR,
     SUBSTITUICAO_EQUIPAMENTO,
@@ -35,42 +50,49 @@ enum TipoRequisicao {
 @Entity
 @Table(name = "requesicao")
 public class Requesicao {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column (nullable = false)
-    private Date data;
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    @Column(name = "data", nullable = false)
+    private LocalDate data;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "tipo", nullable = false)
     private TipoRequisicao tipo;
+
+    @Column(name = "descricao", columnDefinition = "TEXT", nullable = false)
     private String descricao;
 
     @ManyToMany
-    @JoinTable(
-        name = "requesicao_sala", 
-        joinColumns = @JoinColumn(name = "requesicao_id"), 
-        inverseJoinColumns = @JoinColumn(name = "sala_id")
-    )
+    @JoinTable(name = "requesicao_sala", joinColumns = @JoinColumn(name = "requesicao_id"), inverseJoinColumns = @JoinColumn(name = "sala_id"))
     private List<Sala> Locais;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false)    
+    @Column(name = "status", nullable = false)
     private StatusRequesicao status;
 
-    @Column (columnDefinition = "TEXT",nullable = true)
-    private String feedback; 
+    @Column(name = "feedback", columnDefinition = "TEXT", nullable = true)
+    private String feedback;
 
     @ManyToOne
     @JoinColumn(name = "usuario_id", nullable = false)
     private Usuario usuario;
 
-    public Requesicao(){
-
+    public Requesicao() {
     }
 
-    public Requesicao(Long id, Date data, TipoRequisicao tipo, String descricao, List<Sala> Locais, StatusRequesicao status, String feedback, Usuario usuario) {
+    public Requesicao(
+            Long id,
+            LocalDate data,
+            TipoRequisicao tipo,
+            String descricao,
+            List<Sala> Locais,
+            StatusRequesicao status,
+            String feedback,
+            Usuario usuario) {
         this.id = id;
         this.data = data;
         this.tipo = tipo;
@@ -89,11 +111,11 @@ public class Requesicao {
         this.id = id;
     }
 
-    public Date getData() {
+    public LocalDate getData() {
         return this.data;
     }
 
-    public void setData(Date data) {
+    public void setData(LocalDate data) {
         this.data = data;
     }
 
